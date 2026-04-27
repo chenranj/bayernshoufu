@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #000;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+/* Anti-copy / anti-screenshot deterrents (apply outside admin) */
+body[data-protect="1"] img,
+body[data-protect="1"] [data-protected] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: auto;
+}
+
+body[data-protect="1"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body[data-protect="1"] input,
+body[data-protect="1"] textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@media print {
+  body[data-protect="1"] { display: none !important; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #26262b; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #DC052D; }
+
+/* Diagonal accent stripe utility */
+.bayern-stripe {
+  background: linear-gradient(
+    135deg,
+    transparent 0,
+    transparent calc(50% - 1px),
+    #DC052D calc(50% - 1px),
+    #DC052D calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-bayern-red hover:bg-bayern-red-dark text-white font-semibold px-6 py-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply border border-bayern-border hover:border-bayern-red text-white font-semibold px-6 py-3 transition-colors;
+  }
+
+  .input {
+    @apply w-full bg-bayern-surface border border-bayern-border focus:border-bayern-red text-white px-4 py-3 outline-none transition-colors placeholder:text-bayern-muted;
+  }
+
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-widest text-bayern-muted mb-2;
+  }
+}
