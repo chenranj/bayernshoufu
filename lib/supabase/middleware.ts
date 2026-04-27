@@ -33,11 +33,29 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  const { pathname } = request.nextUrl;
+
+  // If a Supabase auth payload (PKCE code or OTP token_hash) lands at any
+  // route other than the dedicated callback, forward it to the callback so
+  // we can exchange it for a session before any other middleware logic.
+  const hasCode = request.nextUrl.searchParams.has('code');
+  const hasTokenHash = request.nextUrl.searchParams.has('token_hash');
+  if ((hasCode || hasTokenHash) && pathname !== '/auth/callback') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/callback';
+    // Default new sessions to the set-password page — every auth flow that
+    // lands here (invite, recovery, magic link) is one where the user either
+    // needs to set a password for the first time or just reset it.
+    if (!url.searchParams.has('next')) {
+      url.searchParams.set('next', '/auth/set-password');
+    }
+    return NextResponse.redirect(url);
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const isAsset =
     pathname.startsWith('/_next') ||
