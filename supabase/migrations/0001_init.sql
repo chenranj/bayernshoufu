@@ -1,4 +1,4 @@
--- Bayernshofu initial schema
+-- Bayernshoufu initial schema
 -- Run in Supabase Dashboard → SQL Editor
 
 -- =============================================================================

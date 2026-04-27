@@ -16,7 +16,7 @@ export default async function SetPasswordPage() {
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-10">
           <div className="w-3 h-10 bg-bayern-red" />
-          <span className="font-display text-2xl tracking-tightest uppercase">Bayernshofu</span>
+          <span className="font-display text-2xl tracking-tightest uppercase">Bayernshoufu</span>
         </div>
         <h1 className="font-display text-4xl uppercase tracking-tightest leading-tight mb-2">
           Set your password

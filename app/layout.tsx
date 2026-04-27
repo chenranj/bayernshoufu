@@ -17,7 +17,7 @@ const archivo = Archivo_Black({
 });
 
 export const metadata: Metadata = {
-  title: 'Bayernshofu',
+  title: 'Bayernshoufu',
   description: 'A fan jersey archive for FC Bayern enthusiasts.',
   robots: { index: false, follow: false },
 };

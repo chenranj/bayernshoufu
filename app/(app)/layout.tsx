@@ -28,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1">{children}</main>
       <footer className="border-t border-bayern-border py-6 px-4 text-center text-xs text-bayern-muted">
         <p>
-          Bayernshofu — fan archive. Not affiliated with FC Bayern München AG.
+          Bayernshoufu — fan archive. Not affiliated with FC Bayern München AG.
           <span className="mx-2">·</span>
           <Link href="/account" className="hover:text-white">Account</Link>
         </p>

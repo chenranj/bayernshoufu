@@ -35,7 +35,7 @@ export default async function LoginPage({
           <div className="flex items-center gap-3 mb-10">
             <div className="w-3 h-10 bg-bayern-red" />
             <span className="font-display text-2xl tracking-tightest uppercase">
-              Bayernshofu
+              Bayernshoufu
             </span>
           </div>
 

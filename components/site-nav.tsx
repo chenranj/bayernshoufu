@@ -29,7 +29,7 @@ export function SiteNav({
       <div className="max-w-7xl mx-auto px-4 lg:px-8 h-16 flex items-center justify-between">
         <Link href="/jerseys" className="flex items-center gap-2.5 group">
           <div className="w-2.5 h-8 bg-bayern-red transition-all group-hover:h-9" />
-          <span className="font-display text-xl tracking-tightest uppercase">Bayernshofu</span>
+          <span className="font-display text-xl tracking-tightest uppercase">Bayernshoufu</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">

@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import crypto from 'node:crypto';
 
-const SECRET = process.env.WATERMARK_SECRET || 'bayernshofu-dev-secret-change-me';
+const SECRET = process.env.WATERMARK_SECRET || 'bayernshoufu-dev-secret-change-me';
 
 /**
  * Derive a short HMAC token from a user ID.
@@ -62,7 +62,7 @@ function tileSvg(width: number, height: number, token: string, opacity = 0.045):
   for (let y = -tileH; y < height + tileH; y += tileH) {
     for (let x = -tileW; x < width + tileW; x += tileW) {
       tiles.push(
-        `<text x="${x}" y="${y}" fill="#ffffff" fill-opacity="${opacity}" font-size="${fontSize}" font-family="monospace" transform="rotate(-30 ${x} ${y})">BAYERNSHOFU · ${token}</text>`
+        `<text x="${x}" y="${y}" fill="#ffffff" fill-opacity="${opacity}" font-size="${fontSize}" font-family="monospace" transform="rotate(-30 ${x} ${y})">BAYERNSHOUFU · ${token}</text>`
       );
     }
   }
@@ -108,7 +108,7 @@ export async function watermarkGeneric(input: Buffer): Promise<Buffer> {
   const width = meta.width ?? 1024;
   const height = meta.height ?? 1024;
   return base
-    .composite([{ input: Buffer.from(tileSvg(width, height, 'BAYERNSHOFU', 0.025)), blend: 'over' }])
+    .composite([{ input: Buffer.from(tileSvg(width, height, 'BAYERNSHOUFU', 0.025)), blend: 'over' }])
     .png({ compressionLevel: 8 })
     .toBuffer();
 }
