@@ -33,29 +33,39 @@ export function ProtectionLayer() {
     document.addEventListener('dragstart', onDrag);
     document.addEventListener('copy', onCopy);
 
-    // Devtools heuristic: when devtools opens, the inner/outer dimensions diverge.
+    // Devtools heuristic — desktop only. Mobile browsers have address bars
+    // and toolbars that make outer/inner dimension diffs huge by default,
+    // which would false-positive and blur the entire page.
+    const isMobile =
+      window.matchMedia?.('(pointer: coarse)').matches ||
+      navigator.maxTouchPoints > 0 ||
+      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     let warned = false;
-    const tick = () => {
-      const threshold = 160;
-      const opened =
-        window.outerWidth - window.innerWidth > threshold ||
-        window.outerHeight - window.innerHeight > threshold;
-      if (opened && !warned) {
-        warned = true;
-        document.body.style.filter = 'blur(20px)';
-      } else if (!opened && warned) {
-        warned = false;
-        document.body.style.filter = '';
-      }
-    };
-    const id = window.setInterval(tick, 1000);
+    let id: number | undefined;
+    if (!isMobile) {
+      const tick = () => {
+        const threshold = 220;
+        const opened =
+          window.outerWidth - window.innerWidth > threshold ||
+          window.outerHeight - window.innerHeight > threshold;
+        if (opened && !warned) {
+          warned = true;
+          document.body.style.filter = 'blur(20px)';
+        } else if (!opened && warned) {
+          warned = false;
+          document.body.style.filter = '';
+        }
+      };
+      id = window.setInterval(tick, 1000);
+    }
 
     return () => {
       document.removeEventListener('contextmenu', onContext);
       document.removeEventListener('keydown', onKey, true);
       document.removeEventListener('dragstart', onDrag);
       document.removeEventListener('copy', onCopy);
-      window.clearInterval(id);
+      if (id !== undefined) window.clearInterval(id);
     };
   }, []);
 
