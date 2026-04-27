@@ -1,7 +1,15 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/auth/confirm', '/auth/set-password'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/auth/callback',
+  '/auth/confirm',
+  '/auth/set-password',
+  // Banner images render on the login page before the user is authenticated.
+  // The route itself enforces that only the 'banners' bucket is public.
+  '/api/image/banners',
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
