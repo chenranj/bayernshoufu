@@ -5,7 +5,11 @@ import { AdminRoleSelect } from '@/components/admin-role-select';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsersAdmin() {
+export default async function UsersAdmin({
+  searchParams,
+}: {
+  searchParams: { invited?: string; error?: string };
+}) {
   await requireAdmin();
   const admin = createAdminClient();
   const { data: profiles } = await admin
@@ -16,6 +20,18 @@ export default async function UsersAdmin() {
   return (
     <div>
       <h1 className="font-display text-3xl uppercase tracking-tightest mb-6">Users</h1>
+
+      {searchParams.invited && (
+        <div className="mb-4 border border-bayern-red/40 bg-bayern-red/10 px-4 py-3 text-sm">
+          ✓ Invited <span className="font-mono">{searchParams.invited}</span>. They'll receive an email shortly.
+        </div>
+      )}
+      {searchParams.error && (
+        <div className="mb-4 border border-bayern-red bg-bayern-red/15 px-4 py-3 text-sm text-white">
+          <span className="font-semibold uppercase tracking-widest text-xs">Invite failed:</span>{' '}
+          {searchParams.error}
+        </div>
+      )}
 
       <form
         action={inviteUser}

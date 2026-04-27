@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import crypto from 'node:crypto';
@@ -387,23 +388,36 @@ export async function updateBannerSettings(formData: FormData) {
 // USERS
 // =============================================================================
 export async function inviteUser(formData: FormData) {
-  await ensureAdmin();
-  const email = String(formData.get('email') || '').trim().toLowerCase();
-  const makeAdmin = formData.get('role') === 'admin';
-  if (!email) throw new Error('Email required');
+  let resultParam = '';
+  try {
+    await ensureAdmin();
+    const email = String(formData.get('email') || '').trim().toLowerCase();
+    const makeAdmin = formData.get('role') === 'admin';
+    if (!email) throw new Error('Email required');
 
-  const admin = createAdminClient();
-  const origin = currentOrigin();
-  const redirectTo = origin
-    ? `${origin}/auth/callback?next=/auth/set-password`
-    : undefined;
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
-  if (error) throw new Error(error.message);
+    const admin = createAdminClient();
+    const origin = currentOrigin();
+    const redirectTo = origin
+      ? `${origin}/auth/callback?next=/auth/set-password`
+      : undefined;
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+    if (error) throw new Error(error.message);
 
-  if (makeAdmin && data?.user) {
-    await admin.from('profiles').update({ role: 'admin' }).eq('id', data.user.id);
+    if (makeAdmin && data?.user) {
+      const { error: roleErr } = await admin
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', data.user.id);
+      if (roleErr) throw new Error(`Invite sent, but role promotion failed: ${roleErr.message}`);
+    }
+    resultParam = `invited=${encodeURIComponent(email)}`;
+  } catch (e) {
+    const msg = (e as Error).message ?? 'unknown error';
+    console.error('[inviteUser] failed', e);
+    resultParam = `error=${encodeURIComponent(msg)}`;
   }
   revalidatePath('/admin/users');
+  redirect(`/admin/users?${resultParam}`);
 }
 
 export async function setUserRole(formData: FormData) {
