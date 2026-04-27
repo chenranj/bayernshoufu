@@ -1,8 +1,25 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import crypto from 'node:crypto';
+
+function currentOrigin(): string | undefined {
+  // Prefer the request's actual host so multi-domain deployments work
+  // without a hardcoded NEXT_PUBLIC_SITE_URL.
+  try {
+    const h = headers();
+    const host = h.get('x-forwarded-host') ?? h.get('host');
+    if (host) {
+      const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+      return `${proto}://${host}`;
+    }
+  } catch {
+    // headers() unavailable outside request context (e.g. scripts)
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || undefined;
+}
 
 async function ensureAdmin() {
   const supabase = createClient();
@@ -376,7 +393,7 @@ export async function inviteUser(formData: FormData) {
   if (!email) throw new Error('Email required');
 
   const admin = createAdminClient();
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const origin = currentOrigin();
   const redirectTo = origin
     ? `${origin}/auth/callback?next=/auth/set-password`
     : undefined;
