@@ -6,12 +6,13 @@ import { watermarkForUser, watermarkGeneric } from '@/lib/watermark';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type Bucket = 'jerseys' | 'players' | 'banners';
+type Bucket = 'jerseys' | 'players' | 'banners' | 'jersey-images';
 
-const BUCKETS: Record<Bucket, { table: string; pathColumn: string }> = {
-  jerseys: { table: 'jerseys', pathColumn: 'image_path' },
-  players: { table: 'players', pathColumn: 'photo_path' },
-  banners: { table: 'banners', pathColumn: 'image_path' },
+const BUCKETS: Record<Bucket, { table: string; pathColumn: string; storage: 'jerseys' | 'players' | 'banners' }> = {
+  jerseys: { table: 'jerseys', pathColumn: 'image_path', storage: 'jerseys' },
+  players: { table: 'players', pathColumn: 'photo_path', storage: 'players' },
+  banners: { table: 'banners', pathColumn: 'image_path', storage: 'banners' },
+  'jersey-images': { table: 'jersey_images', pathColumn: 'image_path', storage: 'jerseys' },
 };
 
 function detectMime(buf: Buffer): string {
@@ -72,7 +73,7 @@ export async function GET(
     return NextResponse.json({ error: 'no image path' }, { status: 404 });
   }
 
-  const { data: blob, error: dlErr } = await admin.storage.from(bucket).download(path);
+  const { data: blob, error: dlErr } = await admin.storage.from(meta.storage).download(path);
   if (dlErr || !blob) {
     console.error('[image] storage download failed', { bucket, path, dlErr });
     return NextResponse.json({ error: 'download failed', detail: dlErr?.message }, { status: 500 });
@@ -106,7 +107,7 @@ export async function GET(
     .from('image_access_logs')
     .insert({
       user_id: user?.id ?? null,
-      kind: bucket.replace(/s$/, ''),
+      kind: bucket === 'jersey-images' ? 'jersey' : bucket.replace(/s$/, ''),
       entity_id: params.id,
       ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
       user_agent: request.headers.get('user-agent') ?? null,

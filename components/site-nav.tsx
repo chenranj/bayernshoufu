@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Heart, User, Shield, Home, LogOut } from 'lucide-react';
+import { Menu, X, Heart, User, Shield, Home, LogOut, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/jerseys', label: 'Jerseys', icon: Home },
+  { href: '/players', label: 'Players', icon: Star },
   { href: '/favorites', label: 'Favorites', icon: Heart },
   { href: '/account', label: 'Account', icon: User },
 ];

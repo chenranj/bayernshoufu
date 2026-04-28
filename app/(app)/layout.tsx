@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { SiteNav } from '@/components/site-nav';
+import { Flash } from '@/components/flash';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         displayName={profile?.display_name ?? null}
         isAdmin={profile?.role === 'admin'}
       />
+      <Suspense fallback={null}>
+        <Flash />
+      </Suspense>
       <main className="flex-1">{children}</main>
       <footer className="border-t border-bayern-border py-6 px-4 text-center text-xs text-bayern-muted">
         <p>

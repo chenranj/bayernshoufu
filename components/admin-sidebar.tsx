@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, Calendar, Star, Shirt, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, Star, Shirt, Image as ImageIcon, Trophy } from 'lucide-react';
 
 const ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/seasons', label: 'Seasons', icon: Calendar },
+  { href: '/admin/competitions', label: 'Competitions', icon: Trophy },
   { href: '/admin/players', label: 'Players', icon: Star },
   { href: '/admin/jerseys', label: 'Jerseys', icon: Shirt },
   { href: '/admin/banners', label: 'Banners', icon: ImageIcon },

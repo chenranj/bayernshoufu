@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { Heart, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,39 +50,45 @@ function PlayerChip({ player, initialFav }: { player: SpotlightPlayer; initialFa
   }
   return (
     <div className="shrink-0 w-32 group">
-      <div className="relative aspect-square overflow-hidden border border-bayern-border bg-bayern-surface">
-        {player.photo_path ? (
-          <img
-            src={`/api/image/players/${player.id}`}
-            alt={player.full_name}
-            loading="lazy"
-            draggable={false}
-            data-protected
-            className="w-full h-full object-cover select-none"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-bayern-muted text-xs">
-            No photo
-          </div>
-        )}
-        {player.is_legend && (
-          <div className="absolute top-1.5 left-1.5 bg-bayern-red text-white p-1">
-            <Star size={10} fill="currentColor" />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label="Toggle favorite"
-          className={cn(
-            'absolute bottom-1.5 right-1.5 w-7 h-7 bg-black/70 flex items-center justify-center backdrop-blur',
-            fav ? 'text-bayern-red' : 'text-white'
+      <Link href={`/players/${player.slug}`} className="block">
+        <div className="relative aspect-square overflow-hidden border border-bayern-border bg-bayern-surface group-hover:border-bayern-red transition-colors">
+          {player.photo_path ? (
+            <img
+              src={`/api/image/players/${player.id}`}
+              alt={player.full_name}
+              loading="lazy"
+              draggable={false}
+              data-protected
+              className="w-full h-full object-cover select-none"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-bayern-muted text-xs">
+              No photo
+            </div>
           )}
-        >
-          <Heart size={12} fill={fav ? 'currentColor' : 'none'} />
-        </button>
-      </div>
-      <p className="mt-2 text-xs font-semibold leading-tight line-clamp-2">{player.full_name}</p>
+          {player.is_legend && (
+            <div className="absolute top-1.5 left-1.5 bg-bayern-red text-white p-1">
+              <Star size={10} fill="currentColor" />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggle();
+            }}
+            aria-label="Toggle favorite"
+            className={cn(
+              'absolute bottom-1.5 right-1.5 w-7 h-7 bg-black/70 flex items-center justify-center backdrop-blur',
+              fav ? 'text-bayern-red' : 'text-white'
+            )}
+          >
+            <Heart size={12} fill={fav ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+        <p className="mt-2 text-xs font-semibold leading-tight line-clamp-2">{player.full_name}</p>
+      </Link>
     </div>
   );
 }

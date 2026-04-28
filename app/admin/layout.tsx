@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { requireAdmin } from '@/lib/admin-guard';
 import { SiteNav } from '@/components/site-nav';
 import { AdminSidebar } from '@/components/admin-sidebar';
+import { Flash } from '@/components/flash';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +22,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         displayName={profile?.display_name ?? null}
         isAdmin
       />
+      <Suspense fallback={null}>
+        <Flash />
+      </Suspense>
       <div className="flex-1 flex flex-col lg:flex-row">
         <AdminSidebar />
         <div className="flex-1 px-4 lg:px-8 py-6 max-w-6xl">

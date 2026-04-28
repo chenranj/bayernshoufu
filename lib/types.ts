@@ -26,6 +26,21 @@ export type Jersey = {
   image_path: string;
   description: string | null;
   release_year: number | null;
+  competition_id?: string | null;
+};
+
+export type Competition = {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+};
+
+export type JerseyImage = {
+  id: string;
+  jersey_id: string;
+  image_path: string;
+  sort_order: number;
 };
 
 export type Banner = {

@@ -11,10 +11,11 @@ export default async function FavoritesPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: favJ }, { data: favP }, { data: seasons }] = await Promise.all([
+  const [{ data: favJ }, { data: favP }, { data: seasons }, { data: competitions }] = await Promise.all([
     supabase.from('favorite_jerseys').select('jersey_id').eq('user_id', user.id),
     supabase.from('favorite_players').select('player_id').eq('user_id', user.id),
     supabase.from('seasons').select('*').order('year_start', { ascending: false }),
+    supabase.from('competitions').select('*').order('sort_order').order('name'),
   ]);
 
   const jIds = (favJ ?? []).map((f) => f.jersey_id);
@@ -22,15 +23,58 @@ export default async function FavoritesPage() {
 
   const [{ data: jerseys }, { data: players }] = await Promise.all([
     jIds.length
-      ? supabase.from('jerseys').select('*').in('id', jIds)
-      : Promise.resolve({ data: [] as never[] }),
+      ? supabase
+          .from('jerseys')
+          .select('id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order')
+          .in('id', jIds)
+      : Promise.resolve({ data: [] as any[] }),
     pIds.length
       ? supabase
           .from('players')
           .select('id, full_name, slug, photo_path, is_legend')
           .in('id', pIds)
-      : Promise.resolve({ data: [] as never[] }),
+      : Promise.resolve({ data: [] as any[] }),
   ]);
+
+  const ids = (jerseys ?? []).map((j: any) => j.id);
+  const galleryMap = new Map<string, string[]>();
+  const playersByJersey = new Map<string, { id: string; full_name: string; slug: string }[]>();
+  if (ids.length) {
+    const [{ data: gallery }, { data: jpLinks }] = await Promise.all([
+      supabase
+        .from('jersey_images')
+        .select('id, jersey_id, image_path, sort_order')
+        .in('jersey_id', ids)
+        .order('sort_order', { ascending: true }),
+      supabase.from('jersey_players').select('jersey_id, player_id').in('jersey_id', ids),
+    ]);
+    const coverPathByJersey = new Map((jerseys ?? []).map((j: any) => [j.id, j.image_path]));
+    for (const g of gallery ?? []) {
+      if (g.image_path === coverPathByJersey.get(g.jersey_id)) continue;
+      const arr = galleryMap.get(g.jersey_id) ?? [];
+      arr.push(g.id);
+      galleryMap.set(g.jersey_id, arr);
+    }
+    const playerIds = Array.from(new Set((jpLinks ?? []).map((l) => l.player_id)));
+    if (playerIds.length) {
+      const { data: linkedPlayers } = await supabase
+        .from('players')
+        .select('id, full_name, slug')
+        .in('id', playerIds);
+      const byId = new Map((linkedPlayers ?? []).map((p) => [p.id, p]));
+      for (const l of jpLinks ?? []) {
+        const p = byId.get(l.player_id);
+        if (!p) continue;
+        const arr = playersByJersey.get(l.jersey_id) ?? [];
+        arr.push(p);
+        playersByJersey.set(l.jersey_id, arr);
+      }
+      for (const arr of playersByJersey.values()) {
+        arr.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      }
+    }
+  }
+  const competitionMap = new Map((competitions ?? []).map((c) => [c.id, c.name]));
 
   return (
     <div className="px-4 lg:px-8 py-8 max-w-7xl mx-auto">
@@ -64,6 +108,9 @@ export default async function FavoritesPage() {
           <JerseyGrid
             jerseys={jerseys ?? []}
             seasons={seasons ?? []}
+            competitionMap={competitionMap}
+            galleryMap={galleryMap}
+            playersByJersey={playersByJersey}
             favorites={new Set(jIds)}
           />
         )}
