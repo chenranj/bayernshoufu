@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
 import type { Jersey, Season } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,7 @@ export function JerseyModal({
       key: id,
     })),
   ];
+
   const total = slides.length;
 
   useEffect(() => {
@@ -54,9 +55,12 @@ export function JerseyModal({
       else if (e.key === 'ArrowLeft') setIdx((i) => (i - 1 + total) % total);
       else if (e.key === 'ArrowRight') setIdx((i) => (i + 1) % total);
     }
+
     window.addEventListener('keydown', onKey);
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
@@ -65,23 +69,23 @@ export function JerseyModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-fade-in"
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="relative bg-bayern-surface border border-bayern-border w-full max-w-5xl max-h-[92dvh] overflow-y-auto grid grid-cols-1 md:grid-cols-5"
+        className="relative bg-bayern-surface border border-bayern-border w-full max-w-7xl max-h-[94dvh] overflow-hidden grid grid-cols-1 md:grid-cols-5"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-3 right-3 z-10 w-9 h-9 bg-black/80 hover:bg-bayern-red text-white flex items-center justify-center"
+          className="absolute top-3 right-3 z-20 w-9 h-9 bg-black/80 hover:bg-bayern-red text-white flex items-center justify-center"
         >
           <X size={18} />
         </button>
 
-        <div className="md:col-span-3 relative bg-black aspect-[3/4] md:aspect-auto md:min-h-[60dvh]">
+        <div className="md:col-span-4 relative bg-black min-h-[68dvh] md:min-h-[88dvh] flex items-center justify-center overflow-hidden">
           {slides.map((s, i) => (
             <img
               key={s.key}
@@ -95,6 +99,7 @@ export function JerseyModal({
               )}
             />
           ))}
+
           {total > 1 && (
             <>
               <button
@@ -105,6 +110,7 @@ export function JerseyModal({
               >
                 <ChevronLeft size={18} />
               </button>
+
               <button
                 type="button"
                 onClick={() => setIdx((i) => (i + 1) % total)}
@@ -113,7 +119,8 @@ export function JerseyModal({
               >
                 <ChevronRight size={18} />
               </button>
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {slides.map((_, i) => (
                   <button
                     key={i}
@@ -127,6 +134,7 @@ export function JerseyModal({
                   />
                 ))}
               </div>
+
               <div className="absolute top-3 left-3 px-2 py-1 bg-black/80 text-white text-[10px] font-semibold uppercase tracking-widest">
                 {idx + 1} / {total}
               </div>
@@ -134,12 +142,13 @@ export function JerseyModal({
           )}
         </div>
 
-        <div className="md:col-span-2 p-5 md:p-7 flex flex-col gap-5">
+        <div className="md:col-span-1 p-5 md:p-6 flex flex-col gap-5 overflow-y-auto max-h-[94dvh]">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
               {season?.label ?? '—'}
               {jersey.release_year && <> · {jersey.release_year}</>}
             </p>
+
             <h2 className="font-display text-2xl md:text-3xl uppercase tracking-tightest leading-none">
               {jersey.name}
             </h2>
@@ -149,11 +158,13 @@ export function JerseyModal({
             <span className="px-2.5 py-1 bg-bayern-red text-white text-[10px] font-semibold uppercase tracking-widest">
               {KIT_LABELS[jersey.kit_type]}
             </span>
+
             {competitionName && (
               <span className="px-2.5 py-1 bg-black border border-bayern-border text-white text-[10px] font-semibold uppercase tracking-widest">
                 {competitionName}
               </span>
             )}
+
             <button
               type="button"
               onClick={onToggleFavorite}
@@ -175,7 +186,9 @@ export function JerseyModal({
               <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
                 Description
               </p>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{jersey.description}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line">
+                {jersey.description}
+              </p>
             </div>
           )}
 
@@ -183,6 +196,7 @@ export function JerseyModal({
             <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
               Players ({players.length})
             </p>
+
             {players.length === 0 ? (
               <p className="text-sm text-bayern-muted">No players linked.</p>
             ) : (
