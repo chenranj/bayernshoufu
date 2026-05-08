@@ -11,7 +11,7 @@ import { PlayerCombobox } from '@/components/player-combobox';
 
 export const dynamic = 'force-dynamic';
 
-const KIT_OPTIONS = ['home', 'away', 'third', 'goalkeeper', 'special', 'training', 'other'] as const;
+const KIT_OPTIONS = ['home', 'away', 'third', 'goalkeeper', 'special', 'training', 'other', 'Wisen'] as const;
 
 export default async function JerseysAdmin() {
   await requireAdmin();
