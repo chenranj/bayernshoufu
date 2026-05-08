@@ -40,7 +40,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
 
   const visiblePlayers = (players ?? []).slice(0, limit);
   const hasMore = (players ?? []).length > limit;
-
+  const firstNewIndex = (page - 1) * PAGE_SIZE;
   const { data: favs } = userId
     ? await supabase.from('favorite_players').select('player_id').eq('user_id', userId)
     : { data: [] as { player_id: string }[] };
@@ -69,10 +69,11 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
       <PlayersFilter initialQuery={query ?? ''} initialLegend={legendsOnly} />
 
       <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {visiblePlayers.map((p) => (
-          <Link
-            key={p.id}
-            href={`/players/${p.slug}`}
+        {visiblePlayers.map((p, index) => (
+      <Link
+        key={p.id}
+        id={page > 1 && index === firstNewIndex ? 'new-players' : undefined}
+        href={`/players/${p.slug}`}
             className="group bg-bayern-surface border border-bayern-border hover:border-bayern-red transition-colors"
           >
             <div className="relative aspect-square overflow-hidden bg-black">
@@ -128,7 +129,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
       {hasMore && (
         <div className="mt-10 flex justify-center">
           <Link
-            href={`/players?${nextParams.toString()}`}
+            href={`/players?${nextParams.toString()}#new-players`}
             className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
           >
             Load More
