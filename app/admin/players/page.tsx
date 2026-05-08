@@ -15,7 +15,7 @@ export default async function PlayersAdmin() {
     .order('is_legend', { ascending: false })
     .order('full_name');
 
-  const visiblePlayers = (players ?? []).slice(0, 20);
+  const visiblePlayers = (players ?? []).slice(0, 200);
 
   return (
     <div>
