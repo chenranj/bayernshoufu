@@ -215,13 +215,19 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
               firstNewIndex={(page - 1) * PAGE_SIZE}
             />
 
-            {hasMore && (
-  <div className="mt-10 flex justify-center">
-    <a
-      href={`/jerseys?${nextParams.toString()}#new-jerseys`}
-      className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
-    >
-      Load More
-    </a>
-  </div>
-)}
+                       {hasMore && (
+              <div className="mt-10 flex justify-center">
+                <a
+                  href={`/jerseys?${nextParams.toString()}#new-jerseys`}
+                  className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
+                >
+                  Load More
+                </a>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
