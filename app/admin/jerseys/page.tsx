@@ -1,3 +1,4 @@
+import { CompressedFileInput } from '@/components/compressed-file-input';
 import { requireAdmin } from '@/lib/admin-guard';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
@@ -91,7 +92,12 @@ export default async function JerseysAdmin() {
         </div>
         <div className="md:col-span-6">
           <label className="label">Images (pick multiple)</label>
-          <input name="images" type="file" accept="image/*" multiple required className="input" />
+          <CompressedFileInput
+            name="images"
+            multiple
+            required
+            className="input"
+          />  
           <p className="text-[10px] text-bayern-muted mt-1">
             First photo becomes the cover. Cmd/Ctrl-click or drag in to add several.
           </p>
@@ -172,7 +178,11 @@ export default async function JerseysAdmin() {
                 </div>
                 <div className="md:col-span-6">
                   <label className="label">Add more images</label>
-                  <input name="images" type="file" accept="image/*" multiple className="input" />
+                  <CompressedFileInput
+                    name="images"
+                    multiple
+                    className="input"
+                  />
                   <label className="flex items-center gap-2 text-xs mt-1">
                     <input type="checkbox" name="replace_cover" /> Replace cover with first new image
                   </label>
