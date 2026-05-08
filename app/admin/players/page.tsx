@@ -1,28 +1,9 @@
 import { requireAdmin } from '@/lib/admin-guard';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createPlayer, updatePlayer, deletePlayer } from '../_actions';
+import { CompressedFileInput } from '@/components/compressed-file-input';
 
 export const dynamic = 'force-dynamic';
-
-function validatePhotoInput() {
-  return `
-    const file = this.files && this.files[0];
-    if (!file) return;
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Only JPG, PNG, or WEBP images are allowed.');
-      this.value = '';
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Photo is too large. Please keep it under 10MB.');
-      this.value = '';
-      return;
-    }
-  `;
-}
 
 export default async function PlayersAdmin() {
   await requireAdmin();
@@ -69,14 +50,12 @@ export default async function PlayersAdmin() {
 
         <div>
           <label className="label">Photo</label>
-          <input
+          <CompressedFileInput
             name="photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
             className="input"
           />
           <p className="text-[10px] text-bayern-muted mt-1">
-            JPG, PNG, WEBP only. Max 10MB.
+            JPG, PNG, WEBP accepted. Large images will be compressed automatically.
           </p>
         </div>
 
@@ -140,14 +119,12 @@ export default async function PlayersAdmin() {
 
             <div className="md:col-span-2">
               <label className="label">Photo (replace)</label>
-              <input
+              <CompressedFileInput
                 name="photo"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
                 className="input"
               />
               <p className="text-[10px] text-bayern-muted mt-1">
-                Max 10MB.
+                Large images will be compressed automatically.
               </p>
             </div>
 
