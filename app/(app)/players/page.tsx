@@ -5,7 +5,13 @@ import { PlayersFilter } from '@/components/players-filter';
 
 export const dynamic = 'force-dynamic';
 
-type SearchParams = { q?: string; legend?: string };
+type SearchParams = {
+  q?: string;
+  legend?: string;
+  page?: string;
+};
+
+const PAGE_SIZE = 20;
 
 export default async function PlayersPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = createClient();
@@ -13,24 +19,40 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const userId = user?.id ?? null;
 
+  const userId = user?.id ?? null;
   const query = searchParams.q?.trim();
   const legendsOnly = searchParams.legend === '1';
+
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const limit = page * PAGE_SIZE;
 
   let q = supabase
     .from('players')
     .select('id, full_name, slug, photo_path, is_legend, position, shirt_number')
     .order('is_legend', { ascending: false })
     .order('full_name', { ascending: true });
+
   if (query) q = q.ilike('full_name', `%${query}%`);
   if (legendsOnly) q = q.eq('is_legend', true);
-  const { data: players } = await q;
+
+  const { data: players } = await q.limit(limit + 1);
+
+  const visiblePlayers = (players ?? []).slice(0, limit);
+  const hasMore = (players ?? []).length > limit;
 
   const { data: favs } = userId
     ? await supabase.from('favorite_players').select('player_id').eq('user_id', userId)
     : { data: [] as { player_id: string }[] };
+
   const favSet = new Set((favs ?? []).map((f) => f.player_id));
+
+  const nextParams = new URLSearchParams();
+
+  if (query) nextParams.set('q', query);
+  if (legendsOnly) nextParams.set('legend', '1');
+
+  nextParams.set('page', String(page + 1));
 
   return (
     <div className="px-4 lg:px-8 py-8 max-w-7xl mx-auto">
@@ -38,6 +60,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
         <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tightest leading-none">
           The <span className="text-bayern-red">Players</span>
         </h1>
+
         <p className="text-bayern-muted mt-2 text-sm">
           Tap a player to see every jersey they've worn in the archive.
         </p>
@@ -46,7 +69,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
       <PlayersFilter initialQuery={query ?? ''} initialLegend={legendsOnly} />
 
       <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {(players ?? []).map((p) => (
+        {visiblePlayers.map((p) => (
           <Link
             key={p.id}
             href={`/players/${p.slug}`}
@@ -58,6 +81,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
                   src={`/api/image/players/${p.id}`}
                   alt={p.full_name}
                   loading="lazy"
+                  decoding="async"
                   draggable={false}
                   data-protected
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none"
@@ -67,19 +91,25 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
                   No photo
                 </div>
               )}
+
               {p.is_legend && (
                 <div className="absolute top-2 left-2 bg-bayern-red text-white p-1.5">
                   <Star size={12} fill="currentColor" />
                 </div>
               )}
+
               {favSet.has(p.id) && (
                 <div className="absolute top-2 right-2 bg-black/70 text-bayern-red p-1.5 backdrop-blur">
                   <Heart size={12} fill="currentColor" />
                 </div>
               )}
             </div>
+
             <div className="p-3">
-              <h3 className="font-semibold text-sm leading-snug line-clamp-1">{p.full_name}</h3>
+              <h3 className="font-semibold text-sm leading-snug line-clamp-1">
+                {p.full_name}
+              </h3>
+
               <p className="text-[10px] uppercase tracking-widest text-bayern-muted mt-1">
                 {p.position ?? '—'}
                 {p.shirt_number != null && <> · #{p.shirt_number}</>}
@@ -89,9 +119,20 @@ export default async function PlayersPage({ searchParams }: { searchParams: Sear
         ))}
       </div>
 
-      {(players ?? []).length === 0 && (
+      {visiblePlayers.length === 0 && (
         <div className="border border-dashed border-bayern-border py-20 text-center text-bayern-muted">
           No players match.
+        </div>
+      )}
+
+      {hasMore && (
+        <div className="mt-10 flex justify-center">
+          <Link
+            href={`/players?${nextParams.toString()}`}
+            className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
+          >
+            Load More
+          </Link>
         </div>
       )}
     </div>
