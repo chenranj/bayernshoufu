@@ -213,6 +213,7 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
               galleryMap={galleryMap}
               playersByJersey={playersByJersey}
               favorites={favJerseySet}
+              firstNewIndex={(page - 1) * PAGE_SIZE}
             />
 
             {hasMore && (
