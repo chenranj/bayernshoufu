@@ -17,17 +17,23 @@ const BUCKETS: Record<Bucket, { table: string; pathColumn: string; storage: 'jer
 
 function detectMime(buf: Buffer): string {
   if (buf.length < 12) return 'application/octet-stream';
-  // PNG
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
-  // JPEG
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
-  // GIF
   if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'image/gif';
-  // WEBP: "RIFF....WEBP"
+
   if (
-    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
-    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
-  ) return 'image/webp';
+    buf[0] === 0x52 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x46 &&
+    buf[8] === 0x57 &&
+    buf[9] === 0x45 &&
+    buf[10] === 0x42 &&
+    buf[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+
   return 'application/octet-stream';
 }
 
@@ -36,11 +42,13 @@ export async function GET(
   { params }: { params: { bucket: string; id: string } }
 ) {
   const bucket = params.bucket as Bucket;
+
   if (!(bucket in BUCKETS)) {
     return NextResponse.json({ error: 'unknown bucket' }, { status: 404 });
   }
 
   const supabase = createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -62,18 +70,19 @@ export async function GET(
     console.error('[image] db error', { bucket, id: params.id, rowErr });
     return NextResponse.json({ error: 'db error', detail: rowErr.message }, { status: 500 });
   }
+
   if (!row) {
-    console.error('[image] row not found', { bucket, id: params.id });
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
   const path = (row as unknown as Record<string, string | null>)[meta.pathColumn];
+
   if (!path) {
-    console.error('[image] empty path on row', { bucket, id: params.id, row });
     return NextResponse.json({ error: 'no image path' }, { status: 404 });
   }
 
   const { data: blob, error: dlErr } = await admin.storage.from(meta.storage).download(path);
+
   if (dlErr || !blob) {
     console.error('[image] storage download failed', { bucket, path, dlErr });
     return NextResponse.json({ error: 'download failed', detail: dlErr?.message }, { status: 500 });
@@ -84,25 +93,40 @@ export async function GET(
 
   let outBuf: Buffer = inputBuf;
   let outMime = inputMime;
+
   try {
-    // Normalize first — converts heic, applies orientation, strips metadata.
-    const normalized = await sharp(inputBuf, { failOn: 'none' }).rotate().toBuffer();
-    outBuf = user
-      ? await watermarkForUser(normalized, user.id)
-      : await watermarkGeneric(normalized);
-    outMime = 'image/png';
+    if (bucket === 'players') {
+      outBuf = await sharp(inputBuf, { failOn: 'none' })
+        .rotate()
+        .resize({
+          width: 500,
+          height: 500,
+          fit: 'cover',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 70 })
+        .toBuffer();
+
+      outMime = 'image/webp';
+    } else {
+      const normalized = await sharp(inputBuf, { failOn: 'none' }).rotate().toBuffer();
+
+      outBuf = user
+        ? await watermarkForUser(normalized, user.id)
+        : await watermarkGeneric(normalized);
+
+      outMime = 'image/png';
+    }
   } catch (e) {
-    console.error('[image] watermark failed, returning original', {
+    console.error('[image] processing failed, returning original', {
       bucket,
       id: params.id,
       path,
       inputMime,
       err: (e as Error).message,
     });
-    // Fall through: serve original with detected mime
   }
 
-  // Fire-and-forget access log
   void admin
     .from('image_access_logs')
     .insert({
@@ -118,7 +142,7 @@ export async function GET(
     status: 200,
     headers: {
       'Content-Type': outMime,
-      'Cache-Control': 'private, no-store, max-age=0',
+      'Cache-Control': 'private, max-age=86400',
       'Content-Disposition': 'inline',
       'X-Content-Type-Options': 'nosniff',
     },
