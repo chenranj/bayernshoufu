@@ -450,6 +450,7 @@ export async function createJersey(formData: FormData) {
   const kitType = String(formData.get('kit_type') || 'home');
   const description = String(formData.get('description') || '').trim() || null;
   const releaseYear = formData.get('release_year') ? Number(formData.get('release_year')) : null;
+  const sortOrder = Number(formData.get('sort_order') || 0);
   const playerIds = formData.getAll('player_ids').map(String).filter(Boolean);
   const images = formData.getAll('images').filter((v) => v instanceof File) as File[];
 
@@ -474,7 +475,7 @@ export async function createJersey(formData: FormData) {
       kit_type: kitType,
       description,
       release_year: releaseYear,
-      sort_order: 0,
+      sort_order: sortOrder,
       image_path: galleryPaths[0],
     })
     .select('id')
