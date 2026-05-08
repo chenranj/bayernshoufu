@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { FilterBar } from '@/components/filter-bar';
 import { JerseyGrid } from '@/components/jersey-grid';
@@ -215,18 +216,17 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
             />
 
             {hasMore && (
-              <div className="mt-10 flex justify-center">
-                <a
-                  href={`/jerseys?${nextParams.toString()}`}
-                  className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
-                >
-                  Load More
-                </a>
+              <div
+                id="load-more"
+                className="mt-10 flex justify-center"
+              >
+          <Link
+          href={`/jerseys?${nextParams.toString()}#load-more`}
+          scroll={false}
+          className="bg-bayern-red hover:bg-red-700 text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-colors"
+          >
+          Load More
+          </Link>
               </div>
             )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+
