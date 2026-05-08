@@ -159,7 +159,7 @@ export default async function PlayersAdmin() {
         ))}
       </div>
 
-      {(players ?? []).length > 20 && (
+      {(players ?? []).length > 200 && (
         <p className="text-bayern-muted text-xs mt-6 uppercase tracking-widest">
           Showing first 20 players for faster admin loading.
         </p>
