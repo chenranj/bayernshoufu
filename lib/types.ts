@@ -22,10 +22,11 @@ export type Jersey = {
   id: string;
   name: string;
   season_id: string;
-  kit_type: 'home' | 'away' | 'third' | 'goalkeeper' | 'special' | 'training' | 'other';
+  kit_type: 'Wisen' | 'home' | 'away' | 'third' | 'goalkeeper' | 'special' | 'training' | 'other';
   image_path: string;
   description: string | null;
   release_year: number | null;
+  sort_order: number;
   competition_id?: string | null;
 };
 
