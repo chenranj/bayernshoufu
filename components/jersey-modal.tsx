@@ -7,6 +7,7 @@ import type { Jersey, Season } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const KIT_LABELS: Record<Jersey['kit_type'], string> = {
+  Wisen: 'Wisen',
   home: 'Home',
   away: 'Away',
   third: 'Third',
