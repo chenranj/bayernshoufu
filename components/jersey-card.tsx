@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { JerseyModal } from './jersey-modal';
 
 const KIT_LABELS: Record<Jersey['kit_type'], string> = {
+  Wisen: 'Wisen', 
   home: 'Home',
   away: 'Away',
   third: 'Third',
