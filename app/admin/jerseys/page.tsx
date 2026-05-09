@@ -11,7 +11,7 @@ import { PlayerCombobox } from '@/components/player-combobox';
 
 export const dynamic = 'force-dynamic';
 
-const KIT_OPTIONS = ['Wisen'，'home', 'away', 'third', 'goalkeeper', 'special', 'training', 'other'] as const;
+const KIT_OPTIONS = ['Wisen', 'home', 'away', 'third', 'goalkeeper', 'special', 'training', 'other'] as const;
 
 export default async function JerseysAdmin() {
   await requireAdmin();
@@ -87,9 +87,19 @@ export default async function JerseysAdmin() {
           </p>
         </div>
         <div className="md:col-span-2">
-          <label className="label">Release year</label>
-          <input name="release_year" type="number" className="input" />
-        </div>
+  <label className="label">Release year</label>
+  <input name="release_year" type="number" className="input" />
+</div>
+
+<div className="md:col-span-2">
+  <label className="label">Sort</label>
+  <input
+    name="sort_order"
+    type="number"
+    className="input"
+    defaultValue={0}
+  />
+</div>
         <div className="md:col-span-6">
           <label className="label">Images (pick multiple)</label>
           <CompressedFileInput
@@ -173,9 +183,24 @@ export default async function JerseysAdmin() {
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="label">Release year</label>
-                  <input name="release_year" type="number" defaultValue={j.release_year ?? ''} className="input" />
-                </div>
+  <label className="label">Release year</label>
+  <input
+    name="release_year"
+    type="number"
+    defaultValue={j.release_year ?? ''}
+    className="input"
+  />
+</div>
+
+<div className="md:col-span-2">
+  <label className="label">Sort</label>
+  <input
+    name="sort_order"
+    type="number"
+    defaultValue={j.sort_order ?? 0}
+    className="input"
+  />
+</div>
                 <div className="md:col-span-6">
                   <label className="label">Add more images</label>
                   <CompressedFileInput
