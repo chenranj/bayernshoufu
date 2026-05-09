@@ -15,7 +15,7 @@ export type Player = {
   position: string | null;
   photo_path: string | null;
   is_legend: boolean;
-  bio: string | null;
+  bio: string | null; 
 };
 
 export type Jersey = {
