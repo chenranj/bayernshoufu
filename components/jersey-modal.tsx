@@ -180,7 +180,17 @@ export function JerseyModal({
               {isFavorite ? 'Saved' : 'Save'}
             </button>
           </div>
-
+          {jersey.sort_order != null && (
+          <div>
+          <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+          Sort
+          </p>
+          <p className="text-sm font-semibold">
+          {jersey.sort_order}
+          </p>
+        </div>
+      )}
+          
           {jersey.description && (
             <div>
               <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
