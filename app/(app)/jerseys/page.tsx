@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { FilterBar } from '@/components/filter-bar';
-import { JerseyGrid } from '@/components/jersey-grid';
+import { JerseyGrid } from '@/components/jersey-grid'; 
 import { PlayerSpotlight } from '@/components/player-spotlight';
 
 export const dynamic = 'force-dynamic';
