@@ -3,7 +3,7 @@ import { FilterBar } from '@/components/filter-bar';
 import { JerseyGrid } from '@/components/jersey-grid'; 
 import { PlayerSpotlight } from '@/components/player-spotlight';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; 
 
 type SearchParams = {
   season?: string;
