@@ -9,7 +9,7 @@ type SearchParams = {
   season?: string;
   competition?: string;
   q?: string;
-  page?: string;
+  page?: string; 
 };
 
 const PAGE_SIZE = 8;
