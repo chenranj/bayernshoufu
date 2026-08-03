@@ -35,15 +35,15 @@ export default async function LoginPage({
 <div className="flex items-center gap-4 mb-10">
   <div className="w-3 h-14 bg-bayern-red" />
 
-  <div className="flex flex-col">
-    <span className="font-mono text-lg tracking-[0.15em] text-white uppercase">
-      SHOUFU JERSEY®
-    </span>
+<div className="flex flex-col">
+  <span className="font-mono text-[30px] tracking-[0.15em] text-white uppercase">
+    SHOUFU JERSEY®
+  </span>
 
-    <span className="font-mono text-sm tracking-[0.15em] text-gray-400 mt-1 uppercase">
-      PRIVATE ARCHIVE • EST. 2021
-    </span>
-  </div>
+  <span className="font-mono text-[16px] tracking-[0.15em] text-gray-400 mt-2 uppercase">
+    PRIVATE ARCHIVE • EST. 2021
+  </span>
+</div>
 </div>
 
 <h1 className="welcome-reveal font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
