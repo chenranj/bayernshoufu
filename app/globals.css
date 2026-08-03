@@ -77,3 +77,21 @@ body[data-protect="1"] textarea {
     @apply block text-xs font-semibold uppercase tracking-widest text-bayern-muted mb-2;
   }
 }
+/* Welcome reveal animation */
+.welcome-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: welcomeReveal 0.8s ease-out 1.2s forwards;
+}
+
+@keyframes welcomeReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
