@@ -46,7 +46,7 @@ export default async function LoginPage({
   </div>
 </div>
 
-          <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
+<h1 className="welcome-reveal font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
             Welcome
             <br />
             <span className="text-bayern-red">Mia san mia.</span>
