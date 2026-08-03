@@ -32,12 +32,19 @@ export default async function LoginPage({
       {/* Left: form */}
       <section className="flex items-center justify-center px-6 py-12 lg:px-16 order-2 lg:order-1">
         <div className="w-full max-w-md">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-3 h-10 bg-bayern-red" />
-            <span className="font-display text-2xl tracking-tightest uppercase">
-              Bayernshoufu
-            </span>
-          </div>
+<div className="flex items-center gap-4 mb-10">
+  <div className="w-3 h-12 bg-bayern-red" />
+
+  <div className="flex flex-col">
+    <span className="font-mono text-sm tracking-[0.15em] text-white uppercase">
+      SHOUFU JERSEY®
+    </span>
+
+    <span className="font-mono text-[11px] tracking-[0.15em] text-gray-400 mt-1 uppercase">
+      PRIVATE ARCHIVE · EST. 2021
+    </span>
+  </div>
+</div>
 
           <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
             Welcome
