@@ -32,7 +32,7 @@ export function SiteNav({
   <img
     src="/images/logo.png"
     alt="Shoufu Jersey"
-    className="h-12 w-auto"
+    className="h-16 w-auto"
   />
 </Link>
 
