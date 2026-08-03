@@ -28,10 +28,13 @@ export function SiteNav({
   return (
     <header className="border-b border-bayern-border sticky top-0 bg-black/95 backdrop-blur z-40">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/jerseys" className="flex items-center gap-2.5 group">
-          <div className="w-2.5 h-8 bg-bayern-red transition-all group-hover:h-9" />
-          <span className="font-display text-xl tracking-tightest uppercase">Bayernshoufu</span>
-        </Link>
+<Link href="/jerseys" className="flex items-center">
+  <img
+    src="/images/logo.png"
+    alt="Shoufu Jersey"
+    className="h-12 w-auto"
+  />
+</Link>
 
         <nav className="hidden md:flex items-center gap-1">
           {NAV.map(({ href, label, icon: Icon }) => (
