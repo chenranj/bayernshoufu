@@ -17,21 +17,33 @@ export function Flash() {
   const err = params.get('error');
 
   useEffect(() => {
-    if (!ok && !err) return;
-    setKind(err ? 'err' : 'ok');
-    setMessage(err || decodeURIComponent(ok ?? '') || 'Saved!');
-    setShow(true);
+  if (!ok && !err) return;
 
-    const sp = new URLSearchParams(params.toString());
-    sp.delete('saved');
-    sp.delete('error');
-    const qs = sp.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  setKind(err ? 'err' : 'ok');
+  setMessage(err || decodeURIComponent(ok ?? '') || 'Saved!');
+  setShow(true);
 
-    const t = window.setTimeout(() => setShow(false), 2500);
-    return () => window.clearTimeout(t);
-  }, [ok, err, params, router, pathname]);
+  const sp = new URLSearchParams(params.toString());
+  sp.delete('saved');
+  sp.delete('error');
 
+  const qs = sp.toString();
+
+  router.replace(
+    qs ? `${pathname}?${qs}` : pathname,
+    { scroll: false }
+  );
+}, [ok, err, params, router, pathname]);
+
+useEffect(() => {
+  if (!show) return;
+
+  const t = window.setTimeout(() => {
+    setShow(false);
+  }, 2500);
+
+  return () => window.clearTimeout(t);
+}, [show]);
   if (!show) return null;
 
   return (
