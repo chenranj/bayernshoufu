@@ -26,7 +26,7 @@ export default async function JerseysAdmin() {
     { data: links },
     { data: images },
   ] = await Promise.all([
-    admin.from('jerseys').select('*').order('release_year', { ascending: false }),
+    admin.from('jerseys').select('*').order('created_at', { ascending: false }),
     admin.from('seasons').select('id, label, slug').order('year_start', { ascending: false }),
     admin.from('competitions').select('id, name, slug').order('sort_order').order('name'),
     admin.from('players').select('id, full_name').order('full_name'),
