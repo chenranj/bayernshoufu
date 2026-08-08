@@ -1,49 +1,75 @@
 import { createClient } from '@/lib/supabase/server';
 import { FilterBar } from '@/components/filter-bar';
-import { JerseyGrid } from '@/components/jersey-grid'; 
+import { JerseyGrid } from '@/components/jersey-grid';
 import { PlayerSpotlight } from '@/components/player-spotlight';
 
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';
 
 type SearchParams = {
   season?: string;
   competition?: string;
+  kit?: string;
   q?: string;
-  page?: string; 
+  page?: string;
 };
 
 const PAGE_SIZE = 8;
 
-export default async function JerseysPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function JerseysPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const supabase = createClient();
 
-  const [{ data: seasons }, { data: competitions }, { data: user }] = await Promise.all([
-    supabase.from('seasons').select('*').order('year_start', { ascending: false }),
-    supabase.from('competitions').select('*').order('sort_order').order('name'),
-    supabase.auth.getUser(),
-  ]);
+  const [{ data: seasons }, { data: competitions }, { data: user }] =
+    await Promise.all([
+      supabase
+        .from('seasons')
+        .select('*')
+        .order('year_start', { ascending: false }),
+
+      supabase
+        .from('competitions')
+        .select('*')
+        .order('sort_order')
+        .order('name'),
+
+      supabase.auth.getUser(),
+    ]);
 
   const userId = user.user?.id ?? null;
+
   const seasonSlug = searchParams.season?.trim();
   const compSlug = searchParams.competition?.trim();
+  const kit = searchParams.kit?.trim();
   const query = searchParams.q?.trim();
 
   const page = Math.max(1, Number(searchParams.page || 1));
   const limit = PAGE_SIZE * page;
 
   let seasonId: string | null = null;
+
   if (seasonSlug) {
-    seasonId = (seasons ?? []).find((s) => s.slug === seasonSlug)?.id ?? null;
+    seasonId =
+      (seasons ?? []).find((s) => s.slug === seasonSlug)?.id ?? null;
   }
 
   let competitionId: string | null = null;
+
   if (compSlug) {
-    competitionId = (competitions ?? []).find((c) => c.slug === compSlug)?.id ?? null;
+    competitionId =
+      (competitions ?? []).find((c) => c.slug === compSlug)?.id ?? null;
   }
 
   let matchedPlayers:
-    | { id: string; full_name: string; slug: string; photo_path: string | null; is_legend: boolean }[]
-    = [];
+    | {
+        id: string;
+        full_name: string;
+        slug: string;
+        photo_path: string | null;
+        is_legend: boolean;
+      }[] = [];
 
   if (query) {
     const { data } = await supabase
@@ -68,7 +94,9 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
         matchedPlayers.map((p) => p.id)
       );
 
-    jerseyIds = Array.from(new Set((links ?? []).map((l) => l.jersey_id)));
+    jerseyIds = Array.from(
+      new Set((links ?? []).map((l) => l.jersey_id))
+    );
   } else if (query && matchedPlayers.length === 0) {
     jerseyIds = [];
   }
@@ -81,13 +109,24 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
     .order('sort_order', { ascending: true })
     .order('release_year', { ascending: false });
 
-  if (seasonId) q = q.eq('season_id', seasonId);
-  if (competitionId) q = q.eq('competition_id', competitionId);
+  if (seasonId) {
+    q = q.eq('season_id', seasonId);
+  }
+
+  if (competitionId) {
+    q = q.eq('competition_id', competitionId);
+  }
+
+  if (kit) {
+    q = q.eq('kit_type', kit);
+  }
 
   if (jerseyIds !== null) {
     q = q.in(
       'id',
-      jerseyIds.length ? jerseyIds : ['00000000-0000-0000-0000-000000000000']
+      jerseyIds.length
+        ? jerseyIds
+        : ['00000000-0000-0000-0000-000000000000']
     );
   }
 
@@ -97,8 +136,13 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
   const hasMore = (jerseys ?? []).length > limit;
 
   const ids = visibleJerseys.map((j) => j.id);
+
   const galleryMap = new Map<string, string[]>();
-  const playersByJersey = new Map<string, { id: string; full_name: string; slug: string }[]>();
+
+  const playersByJersey = new Map<
+    string,
+    { id: string; full_name: string; slug: string }[]
+  >();
 
   if (ids.length) {
     const [{ data: gallery }, { data: jpLinks }] = await Promise.all([
@@ -107,20 +151,32 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
         .select('id, jersey_id, image_path, sort_order')
         .in('jersey_id', ids)
         .order('sort_order', { ascending: true }),
-      supabase.from('jersey_players').select('jersey_id, player_id').in('jersey_id', ids),
+
+      supabase
+        .from('jersey_players')
+        .select('jersey_id, player_id')
+        .in('jersey_id', ids),
     ]);
 
-    const coverPathByJersey = new Map(visibleJerseys.map((j) => [j.id, j.image_path]));
+    const coverPathByJersey = new Map(
+      visibleJerseys.map((j) => [j.id, j.image_path])
+    );
 
     for (const g of gallery ?? []) {
-      if (g.image_path === coverPathByJersey.get(g.jersey_id)) continue;
+      if (g.image_path === coverPathByJersey.get(g.jersey_id)) {
+        continue;
+      }
 
       const arr = galleryMap.get(g.jersey_id) ?? [];
+
       arr.push(g.id);
+
       galleryMap.set(g.jersey_id, arr);
     }
 
-    const playerIds = Array.from(new Set((jpLinks ?? []).map((l) => l.player_id)));
+    const playerIds = Array.from(
+      new Set((jpLinks ?? []).map((l) => l.player_id))
+    );
 
     if (playerIds.length) {
       const { data: linkedPlayers } = await supabase
@@ -128,24 +184,33 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
         .select('id, full_name, slug')
         .in('id', playerIds);
 
-      const byId = new Map((linkedPlayers ?? []).map((p) => [p.id, p]));
+      const byId = new Map(
+        (linkedPlayers ?? []).map((p) => [p.id, p])
+      );
 
       for (const l of jpLinks ?? []) {
         const p = byId.get(l.player_id);
+
         if (!p) continue;
 
         const arr = playersByJersey.get(l.jersey_id) ?? [];
+
         arr.push(p);
+
         playersByJersey.set(l.jersey_id, arr);
       }
 
       for (const arr of playersByJersey.values()) {
-        arr.sort((a, b) => a.full_name.localeCompare(b.full_name));
+        arr.sort((a, b) =>
+          a.full_name.localeCompare(b.full_name)
+        );
       }
     }
   }
 
-  const competitionMap = new Map((competitions ?? []).map((c) => [c.id, c.name]));
+  const competitionMap = new Map(
+    (competitions ?? []).map((c) => [c.id, c.name])
+  );
 
   const { data: allPlayers } = await supabase
     .from('players')
@@ -153,23 +218,52 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
     .order('is_legend', { ascending: false })
     .order('full_name');
 
-  const [{ data: favJerseys }, { data: favPlayers }] = await Promise.all([
-    userId
-      ? supabase.from('favorite_jerseys').select('jersey_id').eq('user_id', userId)
-      : Promise.resolve({ data: [] as { jersey_id: string }[] }),
-    userId
-      ? supabase.from('favorite_players').select('player_id').eq('user_id', userId)
-      : Promise.resolve({ data: [] as { player_id: string }[] }),
-  ]);
+  const [{ data: favJerseys }, { data: favPlayers }] =
+    await Promise.all([
+      userId
+        ? supabase
+            .from('favorite_jerseys')
+            .select('jersey_id')
+            .eq('user_id', userId)
+        : Promise.resolve({
+            data: [] as { jersey_id: string }[],
+          }),
 
-  const favJerseySet = new Set((favJerseys ?? []).map((f) => f.jersey_id));
-  const favPlayerSet = new Set((favPlayers ?? []).map((f) => f.player_id));
+      userId
+        ? supabase
+            .from('favorite_players')
+            .select('player_id')
+            .eq('user_id', userId)
+        : Promise.resolve({
+            data: [] as { player_id: string }[],
+          }),
+    ]);
+
+  const favJerseySet = new Set(
+    (favJerseys ?? []).map((f) => f.jersey_id)
+  );
+
+  const favPlayerSet = new Set(
+    (favPlayers ?? []).map((f) => f.player_id)
+  );
 
   const nextParams = new URLSearchParams();
 
-  if (seasonSlug) nextParams.set('season', seasonSlug);
-  if (compSlug) nextParams.set('competition', compSlug);
-  if (query) nextParams.set('q', query);
+  if (seasonSlug) {
+    nextParams.set('season', seasonSlug);
+  }
+
+  if (compSlug) {
+    nextParams.set('competition', compSlug);
+  }
+
+  if (kit) {
+    nextParams.set('kit', kit);
+  }
+
+  if (query) {
+    nextParams.set('q', query);
+  }
 
   nextParams.set('page', String(page + 1));
 
@@ -181,7 +275,7 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
         </h1>
 
         <p className="text-bayern-muted mt-2 text-sm">
-          Filter by season, competition, or search for a legend.
+          Filter by season, competition, kit, or search for a legend.
         </p>
       </div>
 
@@ -191,11 +285,15 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
         players={allPlayers ?? []}
         initialSeason={seasonSlug ?? ''}
         initialCompetition={compSlug ?? ''}
+        initialKit={kit ?? ''}
         initialQuery={query ?? ''}
       />
 
       {query && matchedPlayers.length > 0 && (
-        <PlayerSpotlight players={matchedPlayers} favorites={favPlayerSet} />
+        <PlayerSpotlight
+          players={matchedPlayers}
+          favorites={favPlayerSet}
+        />
       )}
 
       <div className="mt-8">
@@ -215,7 +313,7 @@ export default async function JerseysPage({ searchParams }: { searchParams: Sear
               firstNewIndex={(page - 1) * PAGE_SIZE}
             />
 
-                       {hasMore && (
+            {hasMore && (
               <div className="mt-10 flex justify-center">
                 <a
                   href={`/jerseys?${nextParams.toString()}#new-jerseys`}
