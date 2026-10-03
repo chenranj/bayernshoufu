@@ -3,7 +3,11 @@
 import { JerseyCard } from './jersey-card';
 import type { Jersey, Season } from '@/lib/types';
 
-type LinkedPlayer = { id: string; full_name: string; slug: string };
+type LinkedPlayer = {
+  id: string;
+  full_name: string;
+  slug: string;
+};
 
 export function JerseyGrid({
   jerseys,
@@ -12,6 +16,7 @@ export function JerseyGrid({
   galleryMap,
   playersByJersey,
   favorites,
+  isLoggedIn,
   firstNewIndex = -1,
 }: {
   jerseys: Jersey[];
@@ -20,9 +25,12 @@ export function JerseyGrid({
   galleryMap: Map<string, string[]>;
   playersByJersey: Map<string, LinkedPlayer[]>;
   favorites: Set<string>;
+  isLoggedIn: boolean;
   firstNewIndex?: number;
 }) {
-  const seasonMap = new Map(seasons.map((s) => [s.id, s]));
+  const seasonMap = new Map(
+    seasons.map((s) => [s.id, s])
+  );
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
@@ -34,10 +42,15 @@ export function JerseyGrid({
           <JerseyCard
             jersey={j}
             season={seasonMap.get(j.season_id) ?? null}
-            competitionName={j.competition_id ? competitionMap.get(j.competition_id) ?? null : null}
+            competitionName={
+              j.competition_id
+                ? competitionMap.get(j.competition_id) ?? null
+                : null
+            }
             galleryImageIds={galleryMap.get(j.id) ?? []}
             players={playersByJersey.get(j.id) ?? []}
             isFavorite={favorites.has(j.id)}
+            isLoggedIn={isLoggedIn}
           />
         </div>
       ))}
