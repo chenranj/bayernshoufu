@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { LoginForm } from '@/components/login-form';
 import { BannerCarousel } from '@/components/banner-carousel';
 import { HashAuthHandler } from '@/components/hash-auth-handler';
@@ -11,6 +12,7 @@ export default async function LoginPage({
   searchParams: { redirect?: string; error?: string };
 }) {
   const supabase = createClient();
+
   const { data: banners } = await supabase
     .from('banners')
     .select('id, caption')
@@ -22,44 +24,77 @@ export default async function LoginPage({
     .select('key, value')
     .in('key', ['banner_interval_seconds', 'banner_fade_ms']);
 
-  const intervalSec =
-    Number(settings?.find((s) => s.key === 'banner_interval_seconds')?.value ?? 6);
-  const fadeMs = Number(settings?.find((s) => s.key === 'banner_fade_ms')?.value ?? 1200);
+  const intervalSec = Number(
+    settings?.find((s) => s.key === 'banner_interval_seconds')?.value ?? 6
+  );
+
+  const fadeMs = Number(
+    settings?.find((s) => s.key === 'banner_fade_ms')?.value ?? 1200
+  );
+
+  const signupHref = searchParams.redirect
+    ? `/signup?redirect=${encodeURIComponent(searchParams.redirect)}`
+    : '/signup';
 
   return (
     <main className="min-h-dvh w-full grid lg:grid-cols-2 bg-black">
       <HashAuthHandler />
+
       {/* Left: form */}
       <section className="flex items-center justify-center px-6 py-12 lg:px-16 order-2 lg:order-1">
         <div className="w-full max-w-md">
-<div className="flex items-center gap-4 mb-10">
-  <div className="w-3 h-14 bg-bayern-red" />
+          {/* Brand */}
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-3 h-14 bg-bayern-red" />
 
-<div className="flex flex-col">
-  <span className="font-mono text-[30px] tracking-[0.15em] text-white uppercase">
-    SHOUFU JERSEY®
-  </span>
+            <div className="flex flex-col">
+              <span className="font-mono text-[30px] tracking-[0.15em] text-white uppercase">
+                SHOUFU JERSEY®
+              </span>
 
-  <span className="font-mono text-[16px] tracking-[0.15em] text-gray-400 mt-2 uppercase">
-    PRIVATE ARCHIVE • EST. 2021
-  </span>
-</div>
-</div>
+              <span className="font-mono text-[16px] tracking-[0.15em] text-gray-400 mt-2 uppercase">
+                PRIVATE ARCHIVE • EST. 2021
+              </span>
+            </div>
+          </div>
 
-<h1 className="welcome-reveal font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
+          {/* Welcome */}
+          <h1 className="welcome-reveal font-display text-4xl md:text-5xl uppercase tracking-tightest leading-[0.95] mb-3">
             Welcome
             <br />
             <span className="text-bayern-red">Mia san mia.</span>
           </h1>
+
           <p className="text-bayern-muted text-sm mb-10">
-            A private archive for FC Bayern jerseys. Sign in with the credentials sent to you.
+            A private archive for FC Bayern jerseys. Sign in to save your
+            favorite jerseys.
           </p>
 
-          <LoginForm redirectTo={searchParams.redirect} initialError={searchParams.error} />
+          {/* Login form */}
+          <LoginForm
+            redirectTo={searchParams.redirect}
+            initialError={searchParams.error}
+          />
 
+          {/* Sign up */}
+          <div className="mt-6 text-center">
+            <p className="text-xs uppercase tracking-widest text-bayern-muted">
+              Don&apos;t have an account?
+            </p>
+
+            <Link
+              href={signupHref}
+              className="mt-3 inline-flex w-full items-center justify-center border border-bayern-border px-4 py-3 text-xs font-semibold uppercase tracking-widest text-white transition-colors hover:border-bayern-red hover:text-bayern-red"
+            >
+              Sign Up
+            </Link>
+          </div>
+
+          {/* Legal */}
           <p className="mt-8 text-xs text-bayern-muted leading-relaxed">
-            This site is a non-commercial fan archive and is not affiliated with FC Bayern München AG.
-            All marks and content are the property of their respective owners.
+            This site is a non-commercial fan archive and is not affiliated
+            with FC Bayern München AG. All marks and content are the property
+            of their respective owners.
           </p>
         </div>
       </section>
@@ -72,7 +107,9 @@ export default async function LoginPage({
           intervalMs={intervalSec * 1000}
           fadeMs={fadeMs}
         />
+
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-black via-black/30 to-transparent lg:from-black lg:via-black/40 lg:to-transparent" />
+
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-bayern-red" />
       </section>
     </main>
