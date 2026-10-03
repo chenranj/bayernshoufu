@@ -53,10 +53,6 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (bucket !== 'banners' && !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
   const meta = BUCKETS[bucket];
   const admin = createAdminClient();
 
