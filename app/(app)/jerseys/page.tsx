@@ -310,6 +310,7 @@ export default async function JerseysPage({
               galleryMap={galleryMap}
               playersByJersey={playersByJersey}
               favorites={favJerseySet}
+              isLoggedIn={!!userId}
               firstNewIndex={(page - 1) * PAGE_SIZE}
             />
 
