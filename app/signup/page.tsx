@@ -33,7 +33,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/jerseys`,
+          emailRedirectTo: 'https://bayernshoufu.com/auth/callback?next=/jerseys',
         },
       });
 
