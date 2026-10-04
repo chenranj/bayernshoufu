@@ -23,6 +23,11 @@ const KIT_OPTIONS = [
   'other',
 ] as const;
 
+const BUYER_PREMIUM_OPTIONS = Array.from(
+  { length: 20 },
+  (_, i) => i + 1
+);
+
 export default async function JerseysAdmin() {
   await requireAdmin();
   const admin = createAdminClient();
@@ -217,6 +222,48 @@ export default async function JerseysAdmin() {
           >
             <option value="public">Public</option>
             <option value="private">Private</option>
+          </select>
+        </div>
+
+        {/* PRICE */}
+        <div className="md:col-span-2">
+          <label className="label">Price</label>
+
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-bayern-muted">
+              $
+            </span>
+
+            <input
+              name="price"
+              type="number"
+              min="0"
+              step="0.01"
+              className="input pl-7"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        {/* BUYER'S PREMIUM */}
+        <div className="md:col-span-2">
+          <label className="label">
+            Buyer's Premium
+          </label>
+
+          <select
+            name="buyer_premium"
+            className="input"
+            defaultValue="10"
+          >
+            {BUYER_PREMIUM_OPTIONS.map((premium) => (
+              <option
+                key={premium}
+                value={premium}
+              >
+                {premium}%
+              </option>
+            ))}
           </select>
         </div>
 
@@ -429,6 +476,57 @@ export default async function JerseysAdmin() {
                     <option value="private">
                       Private
                     </option>
+                  </select>
+                </div>
+
+                {/* PRICE */}
+                <div className="md:col-span-2">
+                  <label className="label">
+                    Price
+                  </label>
+
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-bayern-muted">
+                      $
+                    </span>
+
+                    <input
+                      name="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={
+                        j.price ?? ''
+                      }
+                      className="input pl-7"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* BUYER'S PREMIUM */}
+                <div className="md:col-span-2">
+                  <label className="label">
+                    Buyer's Premium
+                  </label>
+
+                  <select
+                    name="buyer_premium"
+                    defaultValue={String(
+                      j.buyer_premium ?? 10
+                    )}
+                    className="input"
+                  >
+                    {BUYER_PREMIUM_OPTIONS.map(
+                      (premium) => (
+                        <option
+                          key={premium}
+                          value={premium}
+                        >
+                          {premium}%
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
