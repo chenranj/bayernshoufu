@@ -13,7 +13,10 @@ function currentOrigin(): string | undefined {
     const host = h.get('x-forwarded-host') ?? h.get('host');
 
     if (host) {
-      const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+      const proto =
+        h.get('x-forwarded-proto') ??
+        (host.startsWith('localhost') ? 'http' : 'https');
+
       return `${proto}://${host}`;
     }
   } catch {}
@@ -62,7 +65,12 @@ async function uploadToBucket(
   bucket: 'jerseys' | 'players' | 'banners',
   file: File
 ): Promise<string> {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+  ];
 
   if (!allowedTypes.includes(file.type)) {
     throw new Error('Only JPG, PNG, WEBP, or GIF images are allowed.');
@@ -117,17 +125,22 @@ async function uploadToBucket(
 
   const admin = createAdminClient();
 
-  const { error } = await admin.storage.from(bucket).upload(key, outputBuffer, {
-    contentType: 'image/webp',
-    upsert: false,
-  });
+  const { error } = await admin.storage
+    .from(bucket)
+    .upload(key, outputBuffer, {
+      contentType: 'image/webp',
+      upsert: false,
+    });
 
   if (error) throw new Error(error.message);
 
   return key;
 }
 
-async function removeFromBucket(bucket: 'jerseys' | 'players' | 'banners', path: string | null) {
+async function removeFromBucket(
+  bucket: 'jerseys' | 'players' | 'banners',
+  path: string | null
+) {
   if (!path) return;
 
   const admin = createAdminClient();
@@ -230,7 +243,9 @@ export async function createCompetition(formData: FormData) {
   const name = String(formData.get('name') || '').trim();
   const sortOrder = Number(formData.get('sort_order') || 0);
 
-  if (!name) flashError('/admin/competitions', 'Name required');
+  if (!name) {
+    flashError('/admin/competitions', 'Name required');
+  }
 
   const admin = createAdminClient();
   const slug = slugify(name);
@@ -287,7 +302,10 @@ export async function deleteCompetition(formData: FormData) {
   const id = String(formData.get('id'));
   const admin = createAdminClient();
 
-  const { error } = await admin.from('competitions').delete().eq('id', id);
+  const { error } = await admin
+    .from('competitions')
+    .delete()
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/competitions');
@@ -308,14 +326,21 @@ export async function createPlayer(formData: FormData) {
   await ensureAdmin();
 
   const fullName = String(formData.get('full_name') || '').trim();
-  const shirtNumber = formData.get('shirt_number') ? Number(formData.get('shirt_number')) : null;
-  const position = String(formData.get('position') || '').trim() || null;
+  const shirtNumber = formData.get('shirt_number')
+    ? Number(formData.get('shirt_number'))
+    : null;
+
+  const position =
+    String(formData.get('position') || '').trim() || null;
+
   const isLegend = formData.get('is_legend') === 'on';
   const bio = String(formData.get('bio') || '').trim() || null;
   const sortOrder = Number(formData.get('sort_order') || 0);
   const photo = formData.get('photo') as File | null;
 
-  if (!fullName) flashError('/admin/players', 'Name required');
+  if (!fullName) {
+    flashError('/admin/players', 'Name required');
+  }
 
   let photoPath: string | null = null;
 
@@ -337,7 +362,10 @@ export async function createPlayer(formData: FormData) {
   });
 
   if (error) {
-    if (photoPath) await removeFromBucket('players', photoPath);
+    if (photoPath) {
+      await removeFromBucket('players', photoPath);
+    }
+
     revalidatePath('/admin/players');
     flashError('/admin/players', error.message);
   }
@@ -352,8 +380,14 @@ export async function updatePlayer(formData: FormData) {
 
   const id = String(formData.get('id'));
   const fullName = String(formData.get('full_name') || '').trim();
-  const shirtNumber = formData.get('shirt_number') ? Number(formData.get('shirt_number')) : null;
-  const position = String(formData.get('position') || '').trim() || null;
+
+  const shirtNumber = formData.get('shirt_number')
+    ? Number(formData.get('shirt_number'))
+    : null;
+
+  const position =
+    String(formData.get('position') || '').trim() || null;
+
   const isLegend = formData.get('is_legend') === 'on';
   const bio = String(formData.get('bio') || '').trim() || null;
   const sortOrder = Number(formData.get('sort_order') || 0);
@@ -379,6 +413,7 @@ export async function updatePlayer(formData: FormData) {
       .maybeSingle();
 
     const newPath = await uploadToBucket('players', photo);
+
     update.photo_path = newPath;
 
     if (existing?.photo_path) {
@@ -386,7 +421,10 @@ export async function updatePlayer(formData: FormData) {
     }
   }
 
-  const { error } = await admin.from('players').update(update).eq('id', id);
+  const { error } = await admin
+    .from('players')
+    .update(update)
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/players');
@@ -410,7 +448,10 @@ export async function deletePlayer(formData: FormData) {
     .eq('id', id)
     .maybeSingle();
 
-  const { error } = await admin.from('players').delete().eq('id', id);
+  const { error } = await admin
+    .from('players')
+    .delete()
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/players');
@@ -435,6 +476,7 @@ async function uploadGallery(files: File[]): Promise<string[]> {
 
   for (const f of files) {
     if (!f || f.size === 0) continue;
+
     out.push(await uploadToBucket('jerseys', f));
   }
 
@@ -446,16 +488,47 @@ export async function createJersey(formData: FormData) {
 
   const name = String(formData.get('name') || '').trim();
   const seasonId = String(formData.get('season_id') || '');
-  const competitionId = String(formData.get('competition_id') || '') || null;
-  const kitType = String(formData.get('kit_type') || 'home');
-  const description = String(formData.get('description') || '').trim() || null;
-  const releaseYear = formData.get('release_year') ? Number(formData.get('release_year')) : null;
-  const sortOrder = Number(formData.get('sort_order') || 0);
-  const playerIds = formData.getAll('player_ids').map(String).filter(Boolean);
-  const images = formData.getAll('images').filter((v) => v instanceof File) as File[];
+  const competitionId =
+    String(formData.get('competition_id') || '') || null;
 
-  if (!name || !seasonId || images.length === 0 || images[0].size === 0) {
-    flashError('/admin/jerseys', 'Name, season, and at least one image required');
+  const kitType = String(formData.get('kit_type') || 'home');
+
+  const description =
+    String(formData.get('description') || '').trim() || null;
+
+  const releaseYear = formData.get('release_year')
+    ? Number(formData.get('release_year'))
+    : null;
+
+  const sortOrder = Number(formData.get('sort_order') || 0);
+
+  // Jersey visibility:
+  // public  = guest + user + viewer + admin
+  // private = viewer + admin
+  const visibility =
+    String(formData.get('visibility') || 'public') === 'private'
+      ? 'private'
+      : 'public';
+
+  const playerIds = formData
+    .getAll('player_ids')
+    .map(String)
+    .filter(Boolean);
+
+  const images = formData
+    .getAll('images')
+    .filter((v) => v instanceof File) as File[];
+
+  if (
+    !name ||
+    !seasonId ||
+    images.length === 0 ||
+    images[0].size === 0
+  ) {
+    flashError(
+      '/admin/jerseys',
+      'Name, season, and at least one image required'
+    );
   }
 
   const galleryPaths = await uploadGallery(images);
@@ -476,6 +549,7 @@ export async function createJersey(formData: FormData) {
       description,
       release_year: releaseYear,
       sort_order: sortOrder,
+      visibility,
       image_path: galleryPaths[0],
     })
     .select('id')
@@ -487,7 +561,11 @@ export async function createJersey(formData: FormData) {
     }
 
     revalidatePath('/admin/jerseys');
-    flashError('/admin/jerseys', error?.message ?? 'Insert failed');
+
+    flashError(
+      '/admin/jerseys',
+      error?.message ?? 'Insert failed'
+    );
   }
 
   const galleryRows = galleryPaths.map((p, i) => ({
@@ -497,7 +575,9 @@ export async function createJersey(formData: FormData) {
   }));
 
   if (galleryRows.length) {
-    await admin.from('jersey_images').insert(galleryRows);
+    await admin
+      .from('jersey_images')
+      .insert(galleryRows);
   }
 
   if (playerIds.length) {
@@ -506,11 +586,14 @@ export async function createJersey(formData: FormData) {
       player_id: pid,
     }));
 
-    await admin.from('jersey_players').insert(rows);
+    await admin
+      .from('jersey_players')
+      .insert(rows);
   }
 
   revalidatePath('/admin/jerseys');
   revalidatePath('/jerseys');
+
   flashRedirect('/admin/jerseys', 'Jersey added');
 }
 
@@ -520,14 +603,40 @@ export async function updateJersey(formData: FormData) {
   const id = String(formData.get('id'));
   const name = String(formData.get('name') || '').trim();
   const seasonId = String(formData.get('season_id') || '');
-  const competitionId = String(formData.get('competition_id') || '') || null;
+
+  const competitionId =
+    String(formData.get('competition_id') || '') || null;
+
   const kitType = String(formData.get('kit_type') || 'home');
-  const description = String(formData.get('description') || '').trim() || null;
-  const releaseYear = formData.get('release_year') ? Number(formData.get('release_year')) : null;
+
+  const description =
+    String(formData.get('description') || '').trim() || null;
+
+  const releaseYear = formData.get('release_year')
+    ? Number(formData.get('release_year'))
+    : null;
+
   const sortOrder = Number(formData.get('sort_order') || 0);
-  const playerIds = formData.getAll('player_ids').map(String).filter(Boolean);
-  const newImages = formData.getAll('images').filter((v) => v instanceof File) as File[];
-  const replaceCover = formData.get('replace_cover') === 'on';
+
+  // Jersey visibility:
+  // public  = guest + user + viewer + admin
+  // private = viewer + admin
+  const visibility =
+    String(formData.get('visibility') || 'public') === 'private'
+      ? 'private'
+      : 'public';
+
+  const playerIds = formData
+    .getAll('player_ids')
+    .map(String)
+    .filter(Boolean);
+
+  const newImages = formData
+    .getAll('images')
+    .filter((v) => v instanceof File) as File[];
+
+  const replaceCover =
+    formData.get('replace_cover') === 'on';
 
   const admin = createAdminClient();
 
@@ -539,9 +648,12 @@ export async function updateJersey(formData: FormData) {
     description,
     release_year: releaseYear,
     sort_order: sortOrder,
+    visibility,
   };
 
-  const fresh = newImages.filter((f) => f && f.size > 0);
+  const fresh = newImages.filter(
+    (f) => f && f.size > 0
+  );
 
   if (fresh.length > 0) {
     const newPaths = await uploadGallery(fresh);
@@ -553,7 +665,8 @@ export async function updateJersey(formData: FormData) {
       .order('sort_order', { ascending: false })
       .limit(1);
 
-    const startOrder = (existingImgs?.[0]?.sort_order ?? -1) + 1;
+    const startOrder =
+      (existingImgs?.[0]?.sort_order ?? -1) + 1;
 
     const galleryRows = newPaths.map((p, i) => ({
       jersey_id: id,
@@ -561,21 +674,29 @@ export async function updateJersey(formData: FormData) {
       sort_order: startOrder + i,
     }));
 
-    await admin.from('jersey_images').insert(galleryRows);
+    await admin
+      .from('jersey_images')
+      .insert(galleryRows);
 
     if (replaceCover) {
       update.image_path = newPaths[0];
     }
   }
 
-  const { error } = await admin.from('jerseys').update(update).eq('id', id);
+  const { error } = await admin
+    .from('jerseys')
+    .update(update)
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/jerseys');
     flashError('/admin/jerseys', error.message);
   }
 
-  await admin.from('jersey_players').delete().eq('jersey_id', id);
+  await admin
+    .from('jersey_players')
+    .delete()
+    .eq('jersey_id', id);
 
   if (playerIds.length) {
     const rows = playerIds.map((pid) => ({
@@ -583,11 +704,14 @@ export async function updateJersey(formData: FormData) {
       player_id: pid,
     }));
 
-    await admin.from('jersey_players').insert(rows);
+    await admin
+      .from('jersey_players')
+      .insert(rows);
   }
 
   revalidatePath('/admin/jerseys');
   revalidatePath('/jerseys');
+
   flashRedirect('/admin/jerseys', 'Saved!');
 }
 
@@ -608,7 +732,10 @@ export async function deleteJersey(formData: FormData) {
     .select('image_path')
     .eq('jersey_id', id);
 
-  const { error } = await admin.from('jerseys').delete().eq('id', id);
+  const { error } = await admin
+    .from('jerseys')
+    .delete()
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/jerseys');
@@ -616,24 +743,39 @@ export async function deleteJersey(formData: FormData) {
   }
 
   if (existing?.image_path) {
-    await removeFromBucket('jerseys', existing.image_path);
+    await removeFromBucket(
+      'jerseys',
+      existing.image_path
+    );
   }
 
   for (const g of gallery ?? []) {
-    if (g.image_path && g.image_path !== existing?.image_path) {
-      await removeFromBucket('jerseys', g.image_path);
+    if (
+      g.image_path &&
+      g.image_path !== existing?.image_path
+    ) {
+      await removeFromBucket(
+        'jerseys',
+        g.image_path
+      );
     }
   }
 
   revalidatePath('/admin/jerseys');
   revalidatePath('/jerseys');
+
   flashRedirect('/admin/jerseys', 'Deleted');
 }
 
-export async function deleteJerseyImage(formData: FormData) {
+export async function deleteJerseyImage(
+  formData: FormData
+) {
   await ensureAdmin();
 
-  const imageId = String(formData.get('image_id'));
+  const imageId = String(
+    formData.get('image_id')
+  );
+
   const admin = createAdminClient();
 
   const { data: img } = await admin
@@ -643,17 +785,26 @@ export async function deleteJerseyImage(formData: FormData) {
     .maybeSingle();
 
   if (!img) {
-    flashError('/admin/jerseys', 'Image not found');
+    flashError(
+      '/admin/jerseys',
+      'Image not found'
+    );
   }
 
-  const { error } = await admin.from('jersey_images').delete().eq('id', imageId);
+  const { error } = await admin
+    .from('jersey_images')
+    .delete()
+    .eq('id', imageId);
 
   if (error) {
     revalidatePath('/admin/jerseys');
     flashError('/admin/jerseys', error.message);
   }
 
-  await removeFromBucket('jerseys', img!.image_path);
+  await removeFromBucket(
+    'jerseys',
+    img!.image_path
+  );
 
   const { data: jersey } = await admin
     .from('jerseys')
@@ -671,13 +822,20 @@ export async function deleteJerseyImage(formData: FormData) {
 
     await admin
       .from('jerseys')
-      .update({ image_path: next?.[0]?.image_path ?? null })
+      .update({
+        image_path:
+          next?.[0]?.image_path ?? null,
+      })
       .eq('id', img!.jersey_id);
   }
 
   revalidatePath('/admin/jerseys');
   revalidatePath('/jerseys');
-  flashRedirect('/admin/jerseys', 'Image removed');
+
+  flashRedirect(
+    '/admin/jerseys',
+    'Image removed'
+  );
 }
 
 // =============================================================================
@@ -687,44 +845,75 @@ export async function deleteJerseyImage(formData: FormData) {
 export async function createBanner(formData: FormData) {
   await ensureAdmin();
 
-  const caption = String(formData.get('caption') || '').trim() || null;
-  const sortOrder = Number(formData.get('sort_order') || 0);
-  const active = formData.get('active') !== 'off';
-  const image = formData.get('image') as File | null;
+  const caption =
+    String(formData.get('caption') || '').trim() || null;
+
+  const sortOrder = Number(
+    formData.get('sort_order') || 0
+  );
+
+  const active =
+    formData.get('active') !== 'off';
+
+  const image =
+    formData.get('image') as File | null;
 
   if (!image || image.size === 0) {
     flashError('/admin/banners', 'Image required');
   }
 
-  const path = await uploadToBucket('banners', image!);
+  const path = await uploadToBucket(
+    'banners',
+    image!
+  );
+
   const admin = createAdminClient();
 
-  const { error } = await admin.from('banners').insert({
-    image_path: path,
-    caption,
-    sort_order: sortOrder,
-    active,
-  });
+  const { error } = await admin
+    .from('banners')
+    .insert({
+      image_path: path,
+      caption,
+      sort_order: sortOrder,
+      active,
+    });
 
   if (error) {
-    await removeFromBucket('banners', path);
+    await removeFromBucket(
+      'banners',
+      path
+    );
+
     revalidatePath('/admin/banners');
     flashError('/admin/banners', error.message);
   }
 
   revalidatePath('/admin/banners');
   revalidatePath('/login');
-  flashRedirect('/admin/banners', 'Banner added');
+
+  flashRedirect(
+    '/admin/banners',
+    'Banner added'
+  );
 }
 
 export async function updateBanner(formData: FormData) {
   await ensureAdmin();
 
   const id = String(formData.get('id'));
-  const caption = String(formData.get('caption') || '').trim() || null;
-  const sortOrder = Number(formData.get('sort_order') || 0);
-  const active = formData.get('active') !== 'off';
-  const image = formData.get('image') as File | null;
+
+  const caption =
+    String(formData.get('caption') || '').trim() || null;
+
+  const sortOrder = Number(
+    formData.get('sort_order') || 0
+  );
+
+  const active =
+    formData.get('active') !== 'off';
+
+  const image =
+    formData.get('image') as File | null;
 
   const admin = createAdminClient();
 
@@ -741,15 +930,25 @@ export async function updateBanner(formData: FormData) {
       .eq('id', id)
       .maybeSingle();
 
-    const newPath = await uploadToBucket('banners', image);
+    const newPath = await uploadToBucket(
+      'banners',
+      image
+    );
+
     update.image_path = newPath;
 
     if (existing?.image_path) {
-      await removeFromBucket('banners', existing.image_path);
+      await removeFromBucket(
+        'banners',
+        existing.image_path
+      );
     }
   }
 
-  const { error } = await admin.from('banners').update(update).eq('id', id);
+  const { error } = await admin
+    .from('banners')
+    .update(update)
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/banners');
@@ -758,6 +957,7 @@ export async function updateBanner(formData: FormData) {
 
   revalidatePath('/admin/banners');
   revalidatePath('/login');
+
   flashRedirect('/admin/banners', 'Saved!');
 }
 
@@ -773,7 +973,10 @@ export async function deleteBanner(formData: FormData) {
     .eq('id', id)
     .maybeSingle();
 
-  const { error } = await admin.from('banners').delete().eq('id', id);
+  const { error } = await admin
+    .from('banners')
+    .delete()
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/banners');
@@ -781,29 +984,49 @@ export async function deleteBanner(formData: FormData) {
   }
 
   if (existing?.image_path) {
-    await removeFromBucket('banners', existing.image_path);
+    await removeFromBucket(
+      'banners',
+      existing.image_path
+    );
   }
 
   revalidatePath('/admin/banners');
   revalidatePath('/login');
+
   flashRedirect('/admin/banners', 'Deleted');
 }
 
-export async function updateBannerSettings(formData: FormData) {
+export async function updateBannerSettings(
+  formData: FormData
+) {
   await ensureAdmin();
 
-  const interval = Number(formData.get('banner_interval_seconds') || 6);
-  const fade = Number(formData.get('banner_fade_ms') || 1200);
+  const interval = Number(
+    formData.get('banner_interval_seconds') || 6
+  );
+
+  const fade = Number(
+    formData.get('banner_fade_ms') || 1200
+  );
 
   const admin = createAdminClient();
 
-  await admin.from('site_settings').upsert([
-    { key: 'banner_interval_seconds', value: interval },
-    { key: 'banner_fade_ms', value: fade },
-  ]);
+  await admin
+    .from('site_settings')
+    .upsert([
+      {
+        key: 'banner_interval_seconds',
+        value: interval,
+      },
+      {
+        key: 'banner_fade_ms',
+        value: fade,
+      },
+    ]);
 
   revalidatePath('/admin/banners');
   revalidatePath('/login');
+
   flashRedirect('/admin/banners', 'Saved!');
 }
 
@@ -817,41 +1040,74 @@ export async function inviteUser(formData: FormData) {
   try {
     await ensureAdmin();
 
-    const email = String(formData.get('email') || '').trim().toLowerCase();
-    const makeAdmin = formData.get('role') === 'admin';
+    const email = String(
+      formData.get('email') || ''
+    )
+      .trim()
+      .toLowerCase();
 
-    if (!email) throw new Error('Email required');
+    const requestedRole = String(
+      formData.get('role') || 'user'
+    );
+
+    const role: 'user' | 'viewer' | 'admin' =
+      requestedRole === 'admin'
+        ? 'admin'
+        : requestedRole === 'viewer'
+          ? 'viewer'
+          : 'user';
+
+    if (!email) {
+      throw new Error('Email required');
+    }
 
     const admin = createAdminClient();
     const origin = currentOrigin();
 
-    const redirectTo = origin ? `${origin}/auth/callback?next=/auth/set-password` : undefined;
+    const redirectTo = origin
+      ? `${origin}/auth/callback?next=/auth/set-password`
+      : undefined;
 
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo,
-    });
+    const { data, error } =
+      await admin.auth.admin.inviteUserByEmail(
+        email,
+        {
+          redirectTo,
+        }
+      );
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
 
-    if (makeAdmin && data?.user) {
+    if (data?.user && role !== 'user') {
       const { error: roleErr } = await admin
         .from('profiles')
-        .update({ role: 'admin' })
+        .update({ role })
         .eq('id', data.user.id);
 
       if (roleErr) {
-        throw new Error(`Invite sent, but role promotion failed: ${roleErr.message}`);
+        throw new Error(
+          `Invite sent, but role update failed: ${roleErr.message}`
+        );
       }
     }
 
-    resultParam = `invited=${encodeURIComponent(email)}&saved=${encodeURIComponent('Invite sent')}`;
+    resultParam =
+      `invited=${encodeURIComponent(email)}` +
+      `&saved=${encodeURIComponent('Invite sent')}`;
   } catch (e) {
-    const msg = (e as Error).message ?? 'unknown error';
+    const msg =
+      (e as Error).message ?? 'unknown error';
+
     console.error('[inviteUser] failed', e);
-    resultParam = `error=${encodeURIComponent(msg)}`;
+
+    resultParam =
+      `error=${encodeURIComponent(msg)}`;
   }
 
   revalidatePath('/admin/users');
+
   redirect(`/admin/users?${resultParam}`);
 }
 
@@ -859,11 +1115,24 @@ export async function setUserRole(formData: FormData) {
   await ensureAdmin();
 
   const id = String(formData.get('id'));
-  const role = String(formData.get('role')) === 'admin' ? 'admin' : 'user';
+
+  const requestedRole = String(
+    formData.get('role') || 'user'
+  );
+
+  const role: 'user' | 'viewer' | 'admin' =
+    requestedRole === 'admin'
+      ? 'admin'
+      : requestedRole === 'viewer'
+        ? 'viewer'
+        : 'user';
 
   const admin = createAdminClient();
 
-  const { error } = await admin.from('profiles').update({ role }).eq('id', id);
+  const { error } = await admin
+    .from('profiles')
+    .update({ role })
+    .eq('id', id);
 
   if (error) {
     revalidatePath('/admin/users');
@@ -871,7 +1140,11 @@ export async function setUserRole(formData: FormData) {
   }
 
   revalidatePath('/admin/users');
-  flashRedirect('/admin/users', 'Role updated');
+
+  flashRedirect(
+    '/admin/users',
+    'Role updated'
+  );
 }
 
 export async function deleteUser(formData: FormData) {
@@ -880,7 +1153,8 @@ export async function deleteUser(formData: FormData) {
   const id = String(formData.get('id'));
   const admin = createAdminClient();
 
-  const { error } = await admin.auth.admin.deleteUser(id);
+  const { error } =
+    await admin.auth.admin.deleteUser(id);
 
   if (error) {
     revalidatePath('/admin/users');
@@ -888,5 +1162,9 @@ export async function deleteUser(formData: FormData) {
   }
 
   revalidatePath('/admin/users');
-  flashRedirect('/admin/users', 'User deleted');
+
+  flashRedirect(
+    '/admin/users',
+    'User deleted'
+  );
 }
