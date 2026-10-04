@@ -218,6 +218,22 @@ export function JerseyCard({
               {jersey.description}
             </p>
           )}
+
+          {/* PRICE + BUYER'S PREMIUM */}
+          {jersey.price != null && (
+            <div className="mt-3 pt-3 border-t border-bayern-border">
+              <p className="text-base font-semibold tracking-tight">
+                ${Number(jersey.price).toLocaleString('en-CA', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+
+              <p className="mt-1 text-[10px] uppercase tracking-widest text-bayern-muted">
+                + {jersey.buyer_premium}% Buyer&apos;s Premium
+              </p>
+            </div>
+          )}
         </div>
       </article>
 
