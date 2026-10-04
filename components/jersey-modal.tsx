@@ -17,7 +17,11 @@ const KIT_LABELS: Record<Jersey['kit_type'], string> = {
   other: 'Kit',
 };
 
-type LinkedPlayer = { id: string; full_name: string; slug: string };
+type LinkedPlayer = {
+  id: string;
+  full_name: string;
+  slug: string;
+};
 
 export function JerseyModal({
   jersey,
@@ -41,7 +45,10 @@ export function JerseyModal({
   const [idx, setIdx] = useState(0);
 
   const slides: { src: string; key: string }[] = [
-    { src: `/api/image/jerseys/${jersey.id}`, key: `cover-${jersey.id}` },
+    {
+      src: `/api/image/jerseys/${jersey.id}`,
+      key: `cover-${jersey.id}`,
+    },
     ...galleryImageIds.map((id) => ({
       src: `/api/image/jersey-images/${id}`,
       key: id,
@@ -52,9 +59,13 @@ export function JerseyModal({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowLeft') setIdx((i) => (i - 1 + total) % total);
-      else if (e.key === 'ArrowRight') setIdx((i) => (i + 1) % total);
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        setIdx((i) => (i - 1 + total) % total);
+      } else if (e.key === 'ArrowRight') {
+        setIdx((i) => (i + 1) % total);
+      }
     }
 
     window.addEventListener('keydown', onKey);
@@ -105,7 +116,9 @@ export function JerseyModal({
             <>
               <button
                 type="button"
-                onClick={() => setIdx((i) => (i - 1 + total) % total)}
+                onClick={() =>
+                  setIdx((i) => (i - 1 + total) % total)
+                }
                 aria-label="Previous"
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/70 hover:bg-bayern-red backdrop-blur text-white flex items-center justify-center"
               >
@@ -114,7 +127,9 @@ export function JerseyModal({
 
               <button
                 type="button"
-                onClick={() => setIdx((i) => (i + 1) % total)}
+                onClick={() =>
+                  setIdx((i) => (i + 1) % total)
+                }
                 aria-label="Next"
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/70 hover:bg-bayern-red backdrop-blur text-white flex items-center justify-center"
               >
@@ -130,7 +145,9 @@ export function JerseyModal({
                     onClick={() => setIdx(i)}
                     className={cn(
                       'w-2 h-2 rounded-full transition-colors',
-                      i === idx ? 'bg-white' : 'bg-white/40 hover:bg-white/70'
+                      i === idx
+                        ? 'bg-white'
+                        : 'bg-white/40 hover:bg-white/70'
                     )}
                   />
                 ))}
@@ -175,31 +192,69 @@ export function JerseyModal({
                   ? 'bg-bayern-red border-bayern-red text-white'
                   : 'bg-transparent border-bayern-border text-white hover:border-bayern-red'
               )}
-              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-label={
+                isFavorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites'
+              }
             >
-              <Heart size={11} fill={isFavorite ? 'currentColor' : 'none'} />
+              <Heart
+                size={11}
+                fill={isFavorite ? 'currentColor' : 'none'}
+              />
               {isFavorite ? 'Saved' : 'Save'}
             </button>
           </div>
+
           {jersey.sort_order != null && (
-          <div>
-          <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
-          Sort
-          </p>
-          <p className="text-sm font-semibold">
-          {jersey.sort_order}
-          </p>
-        </div>
-      )}
-          
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                Sort
+              </p>
+
+              <p className="text-sm font-semibold">
+                {jersey.sort_order}
+              </p>
+            </div>
+          )}
+
           {jersey.description && (
             <div>
               <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
                 Description
               </p>
+
               <p className="text-sm leading-relaxed whitespace-pre-line">
                 {jersey.description}
               </p>
+            </div>
+          )}
+
+          {/* PRICE + BUYER'S PREMIUM */}
+          {jersey.price != null && (
+            <div className="border-t border-bayern-border pt-5">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                  Price
+                </p>
+
+                <p className="text-xl font-semibold">
+                  ${Number(jersey.price).toLocaleString('en-CA', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                  Buyer&apos;s Premium
+                </p>
+
+                <p className="text-sm font-semibold">
+                  {jersey.buyer_premium}%
+                </p>
+              </div>
             </div>
           )}
 
@@ -209,7 +264,9 @@ export function JerseyModal({
             </p>
 
             {players.length === 0 ? (
-              <p className="text-sm text-bayern-muted">No players linked.</p>
+              <p className="text-sm text-bayern-muted">
+                No players linked.
+              </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {players.map((p) => (
