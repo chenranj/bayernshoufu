@@ -101,13 +101,13 @@ export default async function JerseysPage({
     jerseyIds = [];
   }
 
-  let q = supabase
-    .from('jerseys')
-    .select(
-      'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order'
-    )
-    .order('sort_order', { ascending: true })
-    .order('release_year', { ascending: false });
+let q = supabase
+  .from('jerseys')
+  .select(
+    'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order, price, buyer_premium'
+  )
+  .order('sort_order', { ascending: true })
+  .order('release_year', { ascending: false });
 
   if (seasonId) {
     q = q.eq('season_id', seasonId);
