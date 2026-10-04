@@ -326,6 +326,7 @@ export async function createPlayer(formData: FormData) {
   await ensureAdmin();
 
   const fullName = String(formData.get('full_name') || '').trim();
+
   const shirtNumber = formData.get('shirt_number')
     ? Number(formData.get('shirt_number'))
     : null;
@@ -488,6 +489,7 @@ export async function createJersey(formData: FormData) {
 
   const name = String(formData.get('name') || '').trim();
   const seasonId = String(formData.get('season_id') || '');
+
   const competitionId =
     String(formData.get('competition_id') || '') || null;
 
@@ -501,6 +503,35 @@ export async function createJersey(formData: FormData) {
     : null;
 
   const sortOrder = Number(formData.get('sort_order') || 0);
+
+  // PRICE
+  const priceValue = String(formData.get('price') || '').trim();
+
+  const price =
+    priceValue === '' ? null : Number(priceValue);
+
+  // BUYER'S PREMIUM
+  const buyerPremium = Number(
+    formData.get('buyer_premium') || 10
+  );
+
+  if (
+    price !== null &&
+    (!Number.isFinite(price) || price < 0)
+  ) {
+    flashError('/admin/jerseys', 'Invalid price');
+  }
+
+  if (
+    !Number.isInteger(buyerPremium) ||
+    buyerPremium < 1 ||
+    buyerPremium > 20
+  ) {
+    flashError(
+      '/admin/jerseys',
+      'Buyer premium must be between 1% and 20%'
+    );
+  }
 
   // Jersey visibility:
   // public  = guest + user + viewer + admin
@@ -550,6 +581,8 @@ export async function createJersey(formData: FormData) {
       release_year: releaseYear,
       sort_order: sortOrder,
       visibility,
+      price,
+      buyer_premium: buyerPremium,
       image_path: galleryPaths[0],
     })
     .select('id')
@@ -618,6 +651,35 @@ export async function updateJersey(formData: FormData) {
 
   const sortOrder = Number(formData.get('sort_order') || 0);
 
+  // PRICE
+  const priceValue = String(formData.get('price') || '').trim();
+
+  const price =
+    priceValue === '' ? null : Number(priceValue);
+
+  // BUYER'S PREMIUM
+  const buyerPremium = Number(
+    formData.get('buyer_premium') || 10
+  );
+
+  if (
+    price !== null &&
+    (!Number.isFinite(price) || price < 0)
+  ) {
+    flashError('/admin/jerseys', 'Invalid price');
+  }
+
+  if (
+    !Number.isInteger(buyerPremium) ||
+    buyerPremium < 1 ||
+    buyerPremium > 20
+  ) {
+    flashError(
+      '/admin/jerseys',
+      'Buyer premium must be between 1% and 20%'
+    );
+  }
+
   // Jersey visibility:
   // public  = guest + user + viewer + admin
   // private = viewer + admin
@@ -649,6 +711,8 @@ export async function updateJersey(formData: FormData) {
     release_year: releaseYear,
     sort_order: sortOrder,
     visibility,
+    price,
+    buyer_premium: buyerPremium,
   };
 
   const fresh = newImages.filter(
