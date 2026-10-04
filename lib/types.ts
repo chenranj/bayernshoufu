@@ -15,19 +15,31 @@ export type Player = {
   position: string | null;
   photo_path: string | null;
   is_legend: boolean;
-  bio: string | null; 
+  bio: string | null;
 };
 
 export type Jersey = {
   id: string;
   name: string;
   season_id: string;
-  kit_type: 'Wisen' | 'home' | 'away' | 'third' | 'goalkeeper' | 'special' | 'training' | 'other';
+  kit_type:
+    | 'Wisen'
+    | 'home'
+    | 'away'
+    | 'third'
+    | 'goalkeeper'
+    | 'special'
+    | 'training'
+    | 'other';
   image_path: string;
   description: string | null;
   release_year: number | null;
   sort_order: number;
   competition_id?: string | null;
+
+  // Sale information
+  price: number | null;
+  buyer_premium: number;
 };
 
 export type Competition = {
@@ -56,5 +68,5 @@ export type Profile = {
   id: string;
   email: string;
   display_name: string | null;
-  role: 'user' | 'admin';
+  role: 'user' | 'viewer' | 'admin';
 };
