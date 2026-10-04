@@ -8,6 +8,8 @@ export const runtime = 'nodejs';
 
 type Bucket = 'jerseys' | 'players' | 'banners' | 'jersey-images';
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 const BUCKETS: Record<
   Bucket,
   {
@@ -93,42 +95,189 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const meta = BUCKETS[bucket];
   const admin = createAdminClient();
 
-  // 1. Get image path from database
-  const { data: row, error: rowErr } = await admin
-    .from(meta.table)
-    .select(meta.pathColumn)
-    .eq('id', params.id)
-    .maybeSingle();
+  // --------------------------------------------------
+  // CURRENT USER ROLE
+  // --------------------------------------------------
 
-  if (rowErr) {
-    console.error('[image] db error', {
-      bucket,
-      id: params.id,
-      rowErr,
-    });
+  let role: UserRole | null = null;
 
-    return NextResponse.json(
-      {
-        error: 'db error',
-        detail: rowErr.message,
-      },
-      { status: 500 }
-    );
+  if (user) {
+    const { data: profile, error: profileErr } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error('[image] profile lookup failed', {
+        userId: user.id,
+        profileErr,
+      });
+
+      return NextResponse.json(
+        { error: 'profile lookup failed' },
+        { status: 500 }
+      );
+    }
+
+    role = (profile?.role as UserRole | undefined) ?? 'user';
   }
 
-  if (!row) {
-    return NextResponse.json(
-      { error: 'not found' },
-      { status: 404 }
-    );
+  const canViewPrivate = role === 'viewer' || role === 'admin';
+
+  const meta = BUCKETS[bucket];
+
+  // --------------------------------------------------
+  // 1. GET IMAGE RECORD + CHECK JERSEY VISIBILITY
+  // --------------------------------------------------
+
+  let path: string | null = null;
+
+  // Main jersey cover
+  if (bucket === 'jerseys') {
+    const { data: jersey, error: jerseyErr } = await admin
+      .from('jerseys')
+      .select('image_path, visibility')
+      .eq('id', params.id)
+      .maybeSingle();
+
+    if (jerseyErr) {
+      console.error('[image] jersey db error', {
+        id: params.id,
+        jerseyErr,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'db error',
+          detail: jerseyErr.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!jersey) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    if (jersey.visibility === 'private' && !canViewPrivate) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    path = jersey.image_path;
   }
 
-  const path = (
-    row as unknown as Record<string, string | null>
-  )[meta.pathColumn];
+  // Extra jersey gallery image
+  else if (bucket === 'jersey-images') {
+    const { data: imageRow, error: imageErr } = await admin
+      .from('jersey_images')
+      .select('image_path, jersey_id')
+      .eq('id', params.id)
+      .maybeSingle();
+
+    if (imageErr) {
+      console.error('[image] jersey image db error', {
+        id: params.id,
+        imageErr,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'db error',
+          detail: imageErr.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!imageRow) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    const { data: jersey, error: jerseyErr } = await admin
+      .from('jerseys')
+      .select('visibility')
+      .eq('id', imageRow.jersey_id)
+      .maybeSingle();
+
+    if (jerseyErr) {
+      console.error('[image] parent jersey lookup failed', {
+        jerseyId: imageRow.jersey_id,
+        jerseyErr,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'db error',
+          detail: jerseyErr.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!jersey) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    if (jersey.visibility === 'private' && !canViewPrivate) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    path = imageRow.image_path;
+  }
+
+  // Players / banners
+  else {
+    const { data: row, error: rowErr } = await admin
+      .from(meta.table)
+      .select(meta.pathColumn)
+      .eq('id', params.id)
+      .maybeSingle();
+
+    if (rowErr) {
+      console.error('[image] db error', {
+        bucket,
+        id: params.id,
+        rowErr,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'db error',
+          detail: rowErr.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!row) {
+      return NextResponse.json(
+        { error: 'not found' },
+        { status: 404 }
+      );
+    }
+
+    path = (
+      row as unknown as Record<string, string | null>
+    )[meta.pathColumn];
+  }
 
   if (!path) {
     return NextResponse.json(
@@ -137,7 +286,10 @@ export async function GET(
     );
   }
 
-  // 2. Download original image from Supabase Storage
+  // --------------------------------------------------
+  // 2. DOWNLOAD ORIGINAL IMAGE
+  // --------------------------------------------------
+
   const { data: blob, error: dlErr } = await admin.storage
     .from(meta.storage)
     .download(path);
@@ -168,6 +320,7 @@ export async function GET(
     // --------------------------------------------------
     // PLAYER PHOTOS
     // --------------------------------------------------
+
     if (bucket === 'players') {
       outBuf = await sharp(inputBuf, {
         failOn: 'none',
@@ -191,9 +344,8 @@ export async function GET(
     // --------------------------------------------------
     // JERSEYS / EXTRA JERSEY IMAGES / BANNERS
     // --------------------------------------------------
+
     else {
-      // Limit extremely large originals before watermarking.
-      // This reduces memory usage and processing time.
       const normalized = await sharp(inputBuf, {
         failOn: 'none',
       })
@@ -206,13 +358,10 @@ export async function GET(
         })
         .toBuffer();
 
-      // Keep existing watermark behavior.
       const watermarked = user
         ? await watermarkForUser(normalized, user.id)
         : await watermarkGeneric(normalized);
 
-      // Convert final result to WebP instead of PNG.
-      // This dramatically reduces photo file size.
       outBuf = await sharp(watermarked, {
         failOn: 'none',
       })
@@ -233,14 +382,14 @@ export async function GET(
       err: (e as Error).message,
     });
 
-    // If Sharp/watermark processing fails,
-    // return original image rather than breaking the page.
     outBuf = inputBuf;
     outMime = inputMime;
   }
 
-  // 3. Access log
-  // Do not block image response waiting for logging.
+  // --------------------------------------------------
+  // 3. ACCESS LOG
+  // --------------------------------------------------
+
   void admin
     .from('image_access_logs')
     .insert({
@@ -260,27 +409,24 @@ export async function GET(
     .then(() => undefined);
 
   // --------------------------------------------------
-  // CACHE STRATEGY
+  // 4. CACHE STRATEGY
   // --------------------------------------------------
-
-  /*
-    PLAYER PHOTOS:
-    Same image for everyone.
-    Safe for Vercel/CDN public caching.
-
-    JERSEYS:
-    Logged-in users receive user-specific watermarks,
-    so they MUST remain private.
-
-    Logged-out users all receive the same generic watermark,
-    so those can use shared CDN caching.
-  */
 
   let cacheControl: string;
 
   if (bucket === 'players') {
     cacheControl =
       'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';
+  } else if (bucket === 'jerseys' || bucket === 'jersey-images') {
+    /*
+      Jersey access now depends on:
+      - authentication
+      - user role
+      - jersey visibility
+
+      Do NOT allow shared CDN caching here.
+    */
+    cacheControl = 'private, no-store';
   } else if (!user) {
     cacheControl =
       'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';
