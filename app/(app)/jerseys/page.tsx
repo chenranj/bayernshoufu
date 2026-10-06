@@ -13,6 +13,8 @@ type SearchParams = {
   page?: string;
 };
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 const PAGE_SIZE = 8;
 
 export default async function JerseysPage({
@@ -39,6 +41,25 @@ export default async function JerseysPage({
     ]);
 
   const userId = user.user?.id ?? null;
+
+  // 当前登录用户角色
+  let userRole: UserRole | null = null;
+
+  if (userId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (
+      profile?.role === 'user' ||
+      profile?.role === 'viewer' ||
+      profile?.role === 'admin'
+    ) {
+      userRole = profile.role;
+    }
+  }
 
   const seasonSlug = searchParams.season?.trim();
   const compSlug = searchParams.competition?.trim();
@@ -311,6 +332,7 @@ export default async function JerseysPage({
               playersByJersey={playersByJersey}
               favorites={favJerseySet}
               isLoggedIn={!!userId}
+              userRole={userRole}
               firstNewIndex={(page - 1) * PAGE_SIZE}
             />
 
