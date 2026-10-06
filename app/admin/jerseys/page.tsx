@@ -225,6 +225,25 @@ export default async function JerseysAdmin() {
           </select>
         </div>
 
+        {/* SALE TYPE */}
+        <div className="md:col-span-2">
+          <label className="label">Sale Type</label>
+
+          <select
+            name="sale_type"
+            className="input"
+            defaultValue="fixed_price"
+          >
+            <option value="fixed_price">
+              Fixed Price
+            </option>
+
+            <option value="offer_only">
+              By Offer Only
+            </option>
+          </select>
+        </div>
+
         {/* PRICE */}
         <div className="md:col-span-2">
           <label className="label">Price</label>
@@ -475,6 +494,29 @@ export default async function JerseysAdmin() {
 
                     <option value="private">
                       Private
+                    </option>
+                  </select>
+                </div>
+
+                {/* SALE TYPE */}
+                <div className="md:col-span-2">
+                  <label className="label">
+                    Sale Type
+                  </label>
+
+                  <select
+                    name="sale_type"
+                    defaultValue={
+                      j.sale_type ?? 'fixed_price'
+                    }
+                    className="input"
+                  >
+                    <option value="fixed_price">
+                      Fixed Price
+                    </option>
+
+                    <option value="offer_only">
+                      By Offer Only
                     </option>
                   </select>
                 </div>
