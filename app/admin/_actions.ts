@@ -7,6 +7,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   sendOfferCounterEmail,
   sendOfferAcceptedEmail,
+  sendOfferDeclinedEmail,
 } from '@/lib/email';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -1568,7 +1569,9 @@ export async function counterOffer(formData: FormData) {
 export async function declineOffer(formData: FormData) {
   const adminUser = await ensureAdmin();
 
-  const offerId = String(formData.get('offer_id') || '').trim();
+  const offerId = String(
+    formData.get('offer_id') || ''
+  ).trim();
 
   const message =
     String(formData.get('message') || '').trim() ||
@@ -1580,9 +1583,16 @@ export async function declineOffer(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // Get offer information for decline + email.
   const { data: offer, error: offerError } = await admin
     .from('offers')
-    .select('id, status')
+    .select(`
+      id,
+      status,
+      user_id,
+      jersey_id,
+      current_amount
+    `)
     .eq('id', offerId)
     .maybeSingle();
 
@@ -1603,6 +1613,43 @@ export async function declineOffer(formData: FormData) {
     );
   }
 
+  const declinedAmount = Number(
+    offer!.current_amount
+  );
+
+  // Get jersey name for the decline email.
+  const {
+    data: jersey,
+    error: jerseyError,
+  } = await admin
+    .from('jerseys')
+    .select('name')
+    .eq('id', offer!.jersey_id)
+    .maybeSingle();
+
+  if (jerseyError) {
+    console.error(
+      '[declineOffer] jersey lookup failed',
+      jerseyError
+    );
+  }
+
+  // Get buyer email from Supabase Auth.
+  const {
+    data: buyerData,
+    error: buyerError,
+  } = await admin.auth.admin.getUserById(
+    offer!.user_id
+  );
+
+  if (buyerError) {
+    console.error(
+      '[declineOffer] buyer lookup failed',
+      buyerError
+    );
+  }
+
+  // Decline the offer.
   const { error: updateError } = await admin
     .from('offers')
     .update({
@@ -1614,9 +1661,13 @@ export async function declineOffer(formData: FormData) {
     .in('status', ['pending', 'countered']);
 
   if (updateError) {
-    flashError('/admin/offers', updateError.message);
+    flashError(
+      '/admin/offers',
+      updateError.message
+    );
   }
 
+  // Add decline to offer history.
   const { error: messageError } = await admin
     .from('offer_messages')
     .insert({
@@ -1633,8 +1684,36 @@ export async function declineOffer(formData: FormData) {
     );
   }
 
+  // Send decline email to buyer.
+  // Email failure must NOT undo the declined offer.
+  const buyerEmail = buyerData?.user?.email;
+
+  if (buyerEmail) {
+    try {
+      await sendOfferDeclinedEmail({
+        to: buyerEmail,
+        jerseyName: jersey?.name || 'Jersey',
+        amount: declinedAmount,
+        message,
+      });
+    } catch (emailError) {
+      console.error(
+        '[declineOffer] buyer email failed',
+        emailError
+      );
+    }
+  } else {
+    console.error(
+      '[declineOffer] buyer email not found'
+    );
+  }
+
   revalidatePath('/admin/offers');
   revalidatePath('/offers');
+  revalidatePath('/account');
 
-  flashRedirect('/admin/offers', 'Offer declined');
+  flashRedirect(
+    '/admin/offers',
+    'Offer declined'
+  );
 }
