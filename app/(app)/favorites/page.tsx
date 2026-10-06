@@ -4,6 +4,8 @@ import { PlayerSpotlight } from '@/components/player-spotlight';
 
 export const dynamic = 'force-dynamic';
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 export default async function FavoritesPage() {
   const supabase = createClient();
 
@@ -12,6 +14,23 @@ export default async function FavoritesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  // 当前登录用户角色
+  let userRole: UserRole | null = null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (
+    profile?.role === 'user' ||
+    profile?.role === 'viewer' ||
+    profile?.role === 'admin'
+  ) {
+    userRole = profile.role;
+  }
 
   const [
     { data: favJ },
@@ -49,7 +68,7 @@ export default async function FavoritesPage() {
       ? supabase
           .from('jerseys')
           .select(
-            'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order'
+            'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order, price, buyer_premium, sale_type'
           )
           .in('id', jIds)
       : Promise.resolve({ data: [] as any[] }),
@@ -211,6 +230,7 @@ export default async function FavoritesPage() {
             playersByJersey={playersByJersey}
             favorites={new Set(jIds)}
             isLoggedIn={true}
+            userRole={userRole}
           />
         )}
       </section>
