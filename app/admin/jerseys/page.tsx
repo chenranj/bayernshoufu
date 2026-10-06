@@ -1,5 +1,5 @@
+import Link from 'next/link';
 import { CompressedFileInput } from '@/components/compressed-file-input';
-// test redeploy
 import { requireAdmin } from '@/lib/admin-guard';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
@@ -28,23 +28,87 @@ const BUYER_PREMIUM_OPTIONS = Array.from(
   (_, i) => i + 1
 );
 
-export default async function JerseysAdmin() {
+const PAGE_SIZE = 20;
+
+type JerseysAdminProps = {
+  searchParams?: {
+    q?: string;
+    page?: string;
+    saved?: string;
+    error?: string;
+  };
+};
+
+export default async function JerseysAdmin({
+  searchParams,
+}: JerseysAdminProps) {
   await requireAdmin();
+
   const admin = createAdminClient();
 
+  const query =
+    typeof searchParams?.q === 'string'
+      ? searchParams.q.trim()
+      : '';
+
+  const requestedPage = Number(searchParams?.page || '1');
+
+  const page =
+    Number.isInteger(requestedPage) && requestedPage > 0
+      ? requestedPage
+      : 1;
+
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // ---------------------------------------------------------------------------
+  // JERSEYS
+  // Only load the 20 jerseys needed for the current page.
+  // ---------------------------------------------------------------------------
+
+  let jerseyQuery = admin
+    .from('jerseys')
+    .select('*', { count: 'exact' });
+
+  if (query) {
+    jerseyQuery = jerseyQuery.ilike(
+      'name',
+      `%${query}%`
+    );
+  }
+
+  const {
+    data: jerseys,
+    count,
+    error: jerseysError,
+  } = await jerseyQuery
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (jerseysError) {
+    throw new Error(jerseysError.message);
+  }
+
+  const totalJerseys = count ?? 0;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalJerseys / PAGE_SIZE)
+  );
+
+  const jerseyIds = (jerseys ?? []).map(
+    (jersey) => jersey.id
+  );
+
+  // ---------------------------------------------------------------------------
+  // SHARED ADMIN DATA
+  // ---------------------------------------------------------------------------
+
   const [
-    { data: jerseys },
     { data: seasons },
     { data: competitions },
     { data: players },
-    { data: links },
-    { data: images },
   ] = await Promise.all([
-    admin
-      .from('jerseys')
-      .select('*')
-      .order('created_at', { ascending: false }),
-
     admin
       .from('seasons')
       .select('id, label, slug')
@@ -60,41 +124,103 @@ export default async function JerseysAdmin() {
       .from('players')
       .select('id, full_name')
       .order('full_name'),
-
-    admin
-      .from('jersey_players')
-      .select('jersey_id, player_id'),
-
-    admin
-      .from('jersey_images')
-      .select('id, jersey_id, image_path, sort_order')
-      .order('sort_order'),
   ]);
 
-  const linkMap = new Map<string, Set<string>>();
+  // ---------------------------------------------------------------------------
+  // ONLY LOAD PLAYER LINKS + IMAGES FOR CURRENT 20 JERSEYS
+  // ---------------------------------------------------------------------------
 
-  for (const l of links ?? []) {
+  let links: {
+    jersey_id: string;
+    player_id: string;
+  }[] = [];
+
+  let images: {
+    id: string;
+    jersey_id: string;
+    image_path: string;
+    sort_order: number;
+  }[] = [];
+
+  if (jerseyIds.length > 0) {
+    const [
+      { data: currentLinks },
+      { data: currentImages },
+    ] = await Promise.all([
+      admin
+        .from('jersey_players')
+        .select('jersey_id, player_id')
+        .in('jersey_id', jerseyIds),
+
+      admin
+        .from('jersey_images')
+        .select(
+          'id, jersey_id, image_path, sort_order'
+        )
+        .in('jersey_id', jerseyIds)
+        .order('sort_order'),
+    ]);
+
+    links = currentLinks ?? [];
+    images = currentImages ?? [];
+  }
+
+  const linkMap = new Map<
+    string,
+    Set<string>
+  >();
+
+  for (const l of links) {
     if (!linkMap.has(l.jersey_id)) {
-      linkMap.set(l.jersey_id, new Set());
+      linkMap.set(
+        l.jersey_id,
+        new Set<string>()
+      );
     }
 
-    linkMap.get(l.jersey_id)!.add(l.player_id);
+    linkMap
+      .get(l.jersey_id)!
+      .add(l.player_id);
   }
 
   const imagesByJersey = new Map<
     string,
-    { id: string; sort_order: number }[]
+    {
+      id: string;
+      sort_order: number;
+    }[]
   >();
 
-  for (const img of images ?? []) {
-    const arr = imagesByJersey.get(img.jersey_id) ?? [];
+  for (const img of images) {
+    const arr =
+      imagesByJersey.get(img.jersey_id) ?? [];
 
     arr.push({
       id: img.id,
       sort_order: img.sort_order,
     });
 
-    imagesByJersey.set(img.jersey_id, arr);
+    imagesByJersey.set(
+      img.jersey_id,
+      arr
+    );
+  }
+
+  function pageHref(
+    targetPage: number
+  ) {
+    const params = new URLSearchParams();
+
+    if (query) {
+      params.set('q', query);
+    }
+
+    params.set(
+      'page',
+      String(targetPage)
+    );
+
+    return `/admin/jerseys?${params.toString()}`;
   }
 
   return (
@@ -103,6 +229,31 @@ export default async function JerseysAdmin() {
         Jerseys
       </h1>
 
+      {/* STATUS MESSAGE */}
+      {searchParams?.saved && (
+        <div className="fixed top-6 right-6 z-50 bg-bayern-surface border border-green-500/50 px-5 py-4 shadow-2xl">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-green-400 mb-1">
+            Request complete
+          </p>
+
+          <p className="text-sm text-white">
+            ✓ {searchParams.saved}
+          </p>
+        </div>
+      )}
+
+      {searchParams?.error && (
+        <div className="fixed top-6 right-6 z-50 bg-bayern-surface border border-bayern-red px-5 py-4 shadow-2xl">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-bayern-red mb-1">
+            Request failed
+          </p>
+
+          <p className="text-sm text-white">
+            {searchParams.error}
+          </p>
+        </div>
+      )}
+
       {/* ADD NEW JERSEY */}
       <form
         action={createJersey}
@@ -110,7 +261,9 @@ export default async function JerseysAdmin() {
         className="bg-bayern-surface border border-bayern-border p-5 mb-8 grid grid-cols-1 md:grid-cols-12 gap-3"
       >
         <div className="md:col-span-6">
-          <label className="label">Name</label>
+          <label className="label">
+            Name
+          </label>
 
           <input
             name="name"
@@ -121,14 +274,18 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-3">
-          <label className="label">Season</label>
+          <label className="label">
+            Season
+          </label>
 
           <select
             name="season_id"
             required
             className="input"
           >
-            <option value="">Choose…</option>
+            <option value="">
+              Choose…
+            </option>
 
             {(seasons ?? []).map((s) => (
               <option
@@ -142,7 +299,9 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-3">
-          <label className="label">Kit</label>
+          <label className="label">
+            Kit
+          </label>
 
           <select
             name="kit_type"
@@ -160,14 +319,18 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-4">
-          <label className="label">Competition</label>
+          <label className="label">
+            Competition
+          </label>
 
           <select
             name="competition_id"
             className="input"
             defaultValue=""
           >
-            <option value="">— None —</option>
+            <option value="">
+              — None —
+            </option>
 
             {(competitions ?? []).map((c) => (
               <option
@@ -191,7 +354,9 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-2">
-          <label className="label">Release year</label>
+          <label className="label">
+            Release year
+          </label>
 
           <input
             name="release_year"
@@ -201,7 +366,9 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-2">
-          <label className="label">Sort</label>
+          <label className="label">
+            Sort
+          </label>
 
           <input
             name="sort_order"
@@ -213,21 +380,30 @@ export default async function JerseysAdmin() {
 
         {/* VISIBILITY */}
         <div className="md:col-span-2">
-          <label className="label">Visibility</label>
+          <label className="label">
+            Visibility
+          </label>
 
           <select
             name="visibility"
             className="input"
             defaultValue="public"
           >
-            <option value="public">Public</option>
-            <option value="private">Private</option>
+            <option value="public">
+              Public
+            </option>
+
+            <option value="private">
+              Private
+            </option>
           </select>
         </div>
 
         {/* SALE TYPE */}
         <div className="md:col-span-2">
-          <label className="label">Sale Type</label>
+          <label className="label">
+            Sale Type
+          </label>
 
           <select
             name="sale_type"
@@ -246,7 +422,9 @@ export default async function JerseysAdmin() {
 
         {/* PRICE */}
         <div className="md:col-span-2">
-          <label className="label">Price</label>
+          <label className="label">
+            Price
+          </label>
 
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-bayern-muted">
@@ -275,14 +453,16 @@ export default async function JerseysAdmin() {
             className="input"
             defaultValue="10"
           >
-            {BUYER_PREMIUM_OPTIONS.map((premium) => (
-              <option
-                key={premium}
-                value={premium}
-              >
-                {premium}%
-              </option>
-            ))}
+            {BUYER_PREMIUM_OPTIONS.map(
+              (premium) => (
+                <option
+                  key={premium}
+                  value={premium}
+                >
+                  {premium}%
+                </option>
+              )
+            )}
           </select>
         </div>
 
@@ -299,12 +479,16 @@ export default async function JerseysAdmin() {
           />
 
           <p className="text-[10px] text-bayern-muted mt-1">
-            First photo becomes the cover. Cmd/Ctrl-click or drag in to add several.
+            First photo becomes the cover.
+            Cmd/Ctrl-click or drag in to add
+            several.
           </p>
         </div>
 
         <div className="md:col-span-12">
-          <label className="label">Description</label>
+          <label className="label">
+            Description
+          </label>
 
           <textarea
             name="description"
@@ -315,7 +499,9 @@ export default async function JerseysAdmin() {
         </div>
 
         <div className="md:col-span-12">
-          <label className="label">Players</label>
+          <label className="label">
+            Players
+          </label>
 
           <PlayerCombobox
             name="player_ids"
@@ -331,11 +517,77 @@ export default async function JerseysAdmin() {
         </button>
       </form>
 
+      {/* SEARCH */}
+      <div className="bg-bayern-surface border border-bayern-border p-4 mb-4">
+        <form
+          method="get"
+          className="flex flex-col md:flex-row md:items-end gap-3"
+        >
+          <div className="flex-1">
+            <label className="label">
+              Search Jerseys
+            </label>
+
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              className="input"
+              placeholder="Search by jersey name..."
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="btn-primary uppercase tracking-widest text-xs px-6 h-[42px]"
+          >
+            Search
+          </button>
+
+          {query && (
+            <Link
+              href="/admin/jerseys"
+              className="btn-ghost uppercase tracking-widest text-xs h-[42px] flex items-center justify-center px-6"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-4 pt-3 border-t border-bayern-border">
+          <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+            {query
+              ? `${totalJerseys} result${totalJerseys === 1 ? '' : 's'} for "${query}"`
+              : `${totalJerseys} jerseys`}
+          </p>
+
+          <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+            20 jerseys per page
+          </p>
+        </div>
+      </div>
+
+      {/* NO RESULTS */}
+      {(jerseys ?? []).length === 0 && (
+        <div className="bg-bayern-surface border border-bayern-border p-8 text-center mb-4">
+          <p className="text-sm uppercase tracking-widest">
+            No jerseys found
+          </p>
+
+          {query && (
+            <p className="text-xs text-bayern-muted mt-2">
+              Try a different search.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* EXISTING JERSEYS */}
       <div className="space-y-4">
         {(jerseys ?? []).map((j) => {
           const linked = Array.from(
-            linkMap.get(j.id) ?? new Set<string>()
+            linkMap.get(j.id) ??
+              new Set<string>()
           );
 
           const gallery =
@@ -359,6 +611,7 @@ export default async function JerseysAdmin() {
                 <img
                   src={`/api/image/jerseys/${j.id}`}
                   alt={j.name}
+                  loading="lazy"
                   className="w-full aspect-[3/4] object-cover border border-bayern-border"
                   draggable={false}
                 />
@@ -372,7 +625,9 @@ export default async function JerseysAdmin() {
 
               <div className="md:col-span-10 grid grid-cols-1 md:grid-cols-12 gap-3">
                 <div className="md:col-span-6">
-                  <label className="label">Name</label>
+                  <label className="label">
+                    Name
+                  </label>
 
                   <input
                     name="name"
@@ -382,30 +637,40 @@ export default async function JerseysAdmin() {
                 </div>
 
                 <div className="md:col-span-3">
-                  <label className="label">Season</label>
+                  <label className="label">
+                    Season
+                  </label>
 
                   <select
                     name="season_id"
-                    defaultValue={j.season_id}
+                    defaultValue={
+                      j.season_id
+                    }
                     className="input"
                   >
-                    {(seasons ?? []).map((s) => (
-                      <option
-                        key={s.id}
-                        value={s.id}
-                      >
-                        {s.label}
-                      </option>
-                    ))}
+                    {(seasons ?? []).map(
+                      (s) => (
+                        <option
+                          key={s.id}
+                          value={s.id}
+                        >
+                          {s.label}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
                 <div className="md:col-span-3">
-                  <label className="label">Kit</label>
+                  <label className="label">
+                    Kit
+                  </label>
 
                   <select
                     name="kit_type"
-                    defaultValue={j.kit_type}
+                    defaultValue={
+                      j.kit_type
+                    }
                     className="input"
                   >
                     {KIT_OPTIONS.map((k) => (
@@ -435,14 +700,16 @@ export default async function JerseysAdmin() {
                       — None —
                     </option>
 
-                    {(competitions ?? []).map((c) => (
-                      <option
-                        key={c.id}
-                        value={c.id}
-                      >
-                        {c.name}
-                      </option>
-                    ))}
+                    {(competitions ?? []).map(
+                      (c) => (
+                        <option
+                          key={c.id}
+                          value={c.id}
+                        >
+                          {c.name}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -485,7 +752,8 @@ export default async function JerseysAdmin() {
                   <select
                     name="visibility"
                     defaultValue={
-                      j.visibility ?? 'public'
+                      j.visibility ??
+                      'public'
                     }
                     className="input"
                   >
@@ -508,7 +776,8 @@ export default async function JerseysAdmin() {
                   <select
                     name="sale_type"
                     defaultValue={
-                      j.sale_type ?? 'fixed_price'
+                      j.sale_type ??
+                      'fixed_price'
                     }
                     className="input"
                   >
@@ -589,7 +858,9 @@ export default async function JerseysAdmin() {
                       type="checkbox"
                       name="replace_cover"
                     />
-                    Replace cover with first new image
+
+                    Replace cover with first
+                    new image
                   </label>
                 </div>
 
@@ -616,7 +887,9 @@ export default async function JerseysAdmin() {
                   <PlayerCombobox
                     name="player_ids"
                     options={players ?? []}
-                    defaultSelected={linked}
+                    defaultSelected={
+                      linked
+                    }
                   />
                 </div>
 
@@ -635,8 +908,11 @@ export default async function JerseysAdmin() {
                           <img
                             src={`/api/image/jersey-images/${g.id}`}
                             alt=""
+                            loading="lazy"
                             className="w-20 h-24 object-cover border border-bayern-border"
-                            draggable={false}
+                            draggable={
+                              false
+                            }
                           />
 
                           <button
@@ -667,7 +943,9 @@ export default async function JerseysAdmin() {
 
                   <button
                     type="submit"
-                    formAction={deleteJersey}
+                    formAction={
+                      deleteJersey
+                    }
                     className="border border-bayern-red/40 hover:bg-bayern-red text-bayern-red hover:text-white px-3 text-xs uppercase tracking-widest transition-colors"
                   >
                     Delete
@@ -678,6 +956,51 @@ export default async function JerseysAdmin() {
           );
         })}
       </div>
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div className="mt-6 bg-bayern-surface border border-bayern-border p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="w-full md:w-auto">
+            {page > 1 ? (
+              <Link
+                href={pageHref(page - 1)}
+                className="btn-ghost uppercase tracking-widest text-xs inline-flex items-center justify-center"
+              >
+                ← Previous
+              </Link>
+            ) : (
+              <span className="text-xs uppercase tracking-widest text-bayern-muted opacity-40">
+                ← Previous
+              </span>
+            )}
+          </div>
+
+          <div className="text-center">
+            <p className="text-xs uppercase tracking-widest">
+              Page {page} / {totalPages}
+            </p>
+
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted mt-1">
+              {totalJerseys} jerseys
+            </p>
+          </div>
+
+          <div className="w-full md:w-auto md:text-right">
+            {page < totalPages ? (
+              <Link
+                href={pageHref(page + 1)}
+                className="btn-ghost uppercase tracking-widest text-xs inline-flex items-center justify-center"
+              >
+                Next →
+              </Link>
+            ) : (
+              <span className="text-xs uppercase tracking-widest text-bayern-muted opacity-40">
+                Next →
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
