@@ -515,6 +515,12 @@ export async function createJersey(formData: FormData) {
     formData.get('buyer_premium') || 10
   );
 
+  // SALE TYPE
+  const saleType =
+    String(formData.get('sale_type') || 'fixed_price') === 'offer_only'
+      ? 'offer_only'
+      : 'fixed_price';
+
   if (
     price !== null &&
     (!Number.isFinite(price) || price < 0)
@@ -533,9 +539,6 @@ export async function createJersey(formData: FormData) {
     );
   }
 
-  // Jersey visibility:
-  // public  = guest + user + viewer + admin
-  // private = viewer + admin
   const visibility =
     String(formData.get('visibility') || 'public') === 'private'
       ? 'private'
@@ -583,6 +586,7 @@ export async function createJersey(formData: FormData) {
       visibility,
       price,
       buyer_premium: buyerPremium,
+      sale_type: saleType,
       image_path: galleryPaths[0],
     })
     .select('id')
@@ -662,6 +666,12 @@ export async function updateJersey(formData: FormData) {
     formData.get('buyer_premium') || 10
   );
 
+  // SALE TYPE
+  const saleType =
+    String(formData.get('sale_type') || 'fixed_price') === 'offer_only'
+      ? 'offer_only'
+      : 'fixed_price';
+
   if (
     price !== null &&
     (!Number.isFinite(price) || price < 0)
@@ -680,9 +690,6 @@ export async function updateJersey(formData: FormData) {
     );
   }
 
-  // Jersey visibility:
-  // public  = guest + user + viewer + admin
-  // private = viewer + admin
   const visibility =
     String(formData.get('visibility') || 'public') === 'private'
       ? 'private'
@@ -713,6 +720,7 @@ export async function updateJersey(formData: FormData) {
     visibility,
     price,
     buyer_premium: buyerPremium,
+    sale_type: saleType,
   };
 
   const fresh = newImages.filter(
