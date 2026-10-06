@@ -28,12 +28,12 @@ const BUYER_PREMIUM_OPTIONS = Array.from(
   (_, i) => i + 1
 );
 
-const PAGE_SIZE = 20;
+const LOAD_SIZE = 20;
 
 type JerseysAdminProps = {
   searchParams?: {
     q?: string;
-    page?: string;
+    limit?: string;
     saved?: string;
     error?: string;
   };
@@ -46,25 +46,35 @@ export default async function JerseysAdmin({
 
   const admin = createAdminClient();
 
+  // ===========================================================================
+  // SEARCH
+  // ===========================================================================
+
   const query =
     typeof searchParams?.q === 'string'
       ? searchParams.q.trim()
       : '';
 
-  const requestedPage = Number(searchParams?.page || '1');
+  // ===========================================================================
+  // LOAD MORE
+  // Default: 20
+  // Every click: +20
+  // ===========================================================================
 
-  const page =
-    Number.isInteger(requestedPage) && requestedPage > 0
-      ? requestedPage
-      : 1;
+  const requestedLimit = Number(
+    searchParams?.limit || LOAD_SIZE
+  );
 
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
+  const loadedCount =
+    Number.isInteger(requestedLimit) &&
+    requestedLimit > 0
+      ? requestedLimit
+      : LOAD_SIZE;
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // JERSEYS
-  // Only load the 20 jerseys needed for the current page.
-  // ---------------------------------------------------------------------------
+  // Only load the number of jerseys currently requested.
+  // ===========================================================================
 
   let jerseyQuery = admin
     .from('jerseys')
@@ -83,7 +93,7 @@ export default async function JerseysAdmin({
     error: jerseysError,
   } = await jerseyQuery
     .order('created_at', { ascending: false })
-    .range(from, to);
+    .range(0, loadedCount - 1);
 
   if (jerseysError) {
     throw new Error(jerseysError.message);
@@ -91,18 +101,24 @@ export default async function JerseysAdmin({
 
   const totalJerseys = count ?? 0;
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalJerseys / PAGE_SIZE)
+  const actualLoadedCount =
+    jerseys?.length ?? 0;
+
+  const hasMore =
+    actualLoadedCount < totalJerseys;
+
+  const nextLimit = Math.min(
+    loadedCount + LOAD_SIZE,
+    totalJerseys
   );
 
   const jerseyIds = (jerseys ?? []).map(
     (jersey) => jersey.id
   );
 
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
   // SHARED ADMIN DATA
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
 
   const [
     { data: seasons },
@@ -112,7 +128,9 @@ export default async function JerseysAdmin({
     admin
       .from('seasons')
       .select('id, label, slug')
-      .order('year_start', { ascending: false }),
+      .order('year_start', {
+        ascending: false,
+      }),
 
     admin
       .from('competitions')
@@ -126,9 +144,9 @@ export default async function JerseysAdmin({
       .order('full_name'),
   ]);
 
-  // ---------------------------------------------------------------------------
-  // ONLY LOAD PLAYER LINKS + IMAGES FOR CURRENT 20 JERSEYS
-  // ---------------------------------------------------------------------------
+  // ===========================================================================
+  // ONLY LOAD PLAYER LINKS + IMAGES FOR CURRENTLY LOADED JERSEYS
+  // ===========================================================================
 
   let links: {
     jersey_id: string;
@@ -165,6 +183,10 @@ export default async function JerseysAdmin({
     images = currentImages ?? [];
   }
 
+  // ===========================================================================
+  // PLAYER MAP
+  // ===========================================================================
+
   const linkMap = new Map<
     string,
     Set<string>
@@ -183,6 +205,10 @@ export default async function JerseysAdmin({
       .add(l.player_id);
   }
 
+  // ===========================================================================
+  // IMAGE MAP
+  // ===========================================================================
+
   const imagesByJersey = new Map<
     string,
     {
@@ -193,7 +219,8 @@ export default async function JerseysAdmin({
 
   for (const img of images) {
     const arr =
-      imagesByJersey.get(img.jersey_id) ?? [];
+      imagesByJersey.get(img.jersey_id) ??
+      [];
 
     arr.push({
       id: img.id,
@@ -206,9 +233,11 @@ export default async function JerseysAdmin({
     );
   }
 
-  function pageHref(
-    targetPage: number
-  ) {
+  // ===========================================================================
+  // LOAD MORE URL
+  // ===========================================================================
+
+  function loadMoreHref() {
     const params = new URLSearchParams();
 
     if (query) {
@@ -216,11 +245,11 @@ export default async function JerseysAdmin({
     }
 
     params.set(
-      'page',
-      String(targetPage)
+      'limit',
+      String(nextLimit)
     );
 
-    return `/admin/jerseys?${params.toString()}`;
+    return `/admin/jerseys?${params.toString()}#load-more`;
   }
 
   return (
@@ -229,7 +258,10 @@ export default async function JerseysAdmin({
         Jerseys
       </h1>
 
-      {/* STATUS MESSAGE */}
+      {/* ================================================================
+          STATUS MESSAGE
+      ================================================================ */}
+
       {searchParams?.saved && (
         <div className="fixed top-6 right-6 z-50 bg-bayern-surface border border-green-500/50 px-5 py-4 shadow-2xl">
           <p className="text-[10px] uppercase tracking-[0.2em] text-green-400 mb-1">
@@ -254,7 +286,10 @@ export default async function JerseysAdmin({
         </div>
       )}
 
-      {/* ADD NEW JERSEY */}
+      {/* ================================================================
+          ADD NEW JERSEY
+      ================================================================ */}
+
       <form
         action={createJersey}
         encType="multipart/form-data"
@@ -378,7 +413,6 @@ export default async function JerseysAdmin({
           />
         </div>
 
-        {/* VISIBILITY */}
         <div className="md:col-span-2">
           <label className="label">
             Visibility
@@ -399,7 +433,6 @@ export default async function JerseysAdmin({
           </select>
         </div>
 
-        {/* SALE TYPE */}
         <div className="md:col-span-2">
           <label className="label">
             Sale Type
@@ -420,7 +453,6 @@ export default async function JerseysAdmin({
           </select>
         </div>
 
-        {/* PRICE */}
         <div className="md:col-span-2">
           <label className="label">
             Price
@@ -442,7 +474,6 @@ export default async function JerseysAdmin({
           </div>
         </div>
 
-        {/* BUYER'S PREMIUM */}
         <div className="md:col-span-2">
           <label className="label">
             Buyer's Premium
@@ -517,7 +548,10 @@ export default async function JerseysAdmin({
         </button>
       </form>
 
-      {/* SEARCH */}
+      {/* ================================================================
+          SEARCH
+      ================================================================ */}
+
       <div className="bg-bayern-surface border border-bayern-border p-4 mb-4">
         <form
           method="get"
@@ -557,17 +591,25 @@ export default async function JerseysAdmin({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mt-4 pt-3 border-t border-bayern-border">
           <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
             {query
-              ? `${totalJerseys} result${totalJerseys === 1 ? '' : 's'} for "${query}"`
+              ? `${totalJerseys} result${
+                  totalJerseys === 1
+                    ? ''
+                    : 's'
+                } for "${query}"`
               : `${totalJerseys} jerseys`}
           </p>
 
           <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
-            20 jerseys per page
+            Showing {actualLoadedCount} of{' '}
+            {totalJerseys}
           </p>
         </div>
       </div>
 
-      {/* NO RESULTS */}
+      {/* ================================================================
+          NO RESULTS
+      ================================================================ */}
+
       {(jerseys ?? []).length === 0 && (
         <div className="bg-bayern-surface border border-bayern-border p-8 text-center mb-4">
           <p className="text-sm uppercase tracking-widest">
@@ -582,7 +624,10 @@ export default async function JerseysAdmin({
         </div>
       )}
 
-      {/* EXISTING JERSEYS */}
+      {/* ================================================================
+          EXISTING JERSEYS
+      ================================================================ */}
+
       <div className="space-y-4">
         {(jerseys ?? []).map((j) => {
           const linked = Array.from(
@@ -601,6 +646,20 @@ export default async function JerseysAdmin({
               encType="multipart/form-data"
               className="bg-bayern-surface border border-bayern-border p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-start scroll-mt-6"
             >
+              {/* Remember how many jerseys are currently loaded */}
+              <input
+                type="hidden"
+                name="loaded_count"
+                value={loadedCount}
+              />
+
+              {/* Remember current search */}
+              <input
+                type="hidden"
+                name="admin_query"
+                value={query}
+              />
+
               <input
                 type="hidden"
                 name="id"
@@ -743,7 +802,6 @@ export default async function JerseysAdmin({
                   />
                 </div>
 
-                {/* VISIBILITY */}
                 <div className="md:col-span-2">
                   <label className="label">
                     Visibility
@@ -767,7 +825,6 @@ export default async function JerseysAdmin({
                   </select>
                 </div>
 
-                {/* SALE TYPE */}
                 <div className="md:col-span-2">
                   <label className="label">
                     Sale Type
@@ -791,7 +848,6 @@ export default async function JerseysAdmin({
                   </select>
                 </div>
 
-                {/* PRICE */}
                 <div className="md:col-span-2">
                   <label className="label">
                     Price
@@ -816,7 +872,6 @@ export default async function JerseysAdmin({
                   </div>
                 </div>
 
-                {/* BUYER'S PREMIUM */}
                 <div className="md:col-span-2">
                   <label className="label">
                     Buyer's Premium
@@ -910,9 +965,7 @@ export default async function JerseysAdmin({
                             alt=""
                             loading="lazy"
                             className="w-20 h-24 object-cover border border-bayern-border"
-                            draggable={
-                              false
-                            }
+                            draggable={false}
                           />
 
                           <button
@@ -957,50 +1010,50 @@ export default async function JerseysAdmin({
         })}
       </div>
 
-      {/* PAGINATION */}
-      {totalPages > 1 && (
-        <div className="mt-6 bg-bayern-surface border border-bayern-border p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="w-full md:w-auto">
-            {page > 1 ? (
-              <Link
-                href={pageHref(page - 1)}
-                className="btn-ghost uppercase tracking-widest text-xs inline-flex items-center justify-center"
-              >
-                ← Previous
-              </Link>
-            ) : (
-              <span className="text-xs uppercase tracking-widest text-bayern-muted opacity-40">
-                ← Previous
-              </span>
-            )}
-          </div>
+      {/* ================================================================
+          LOAD MORE
+      ================================================================ */}
 
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-widest">
-              Page {page} / {totalPages}
-            </p>
-
-            <p className="text-[10px] uppercase tracking-widest text-bayern-muted mt-1">
+      <div
+        id="load-more"
+        className="scroll-mt-8 mt-6"
+      >
+        {hasMore ? (
+          <div className="bg-bayern-surface border border-bayern-border p-5 text-center">
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-3">
+              Showing {actualLoadedCount} of{' '}
               {totalJerseys} jerseys
             </p>
-          </div>
 
-          <div className="w-full md:w-auto md:text-right">
-            {page < totalPages ? (
-              <Link
-                href={pageHref(page + 1)}
-                className="btn-ghost uppercase tracking-widest text-xs inline-flex items-center justify-center"
-              >
-                Next →
-              </Link>
-            ) : (
-              <span className="text-xs uppercase tracking-widest text-bayern-muted opacity-40">
-                Next →
-              </span>
-            )}
+            <Link
+              href={loadMoreHref()}
+              scroll={true}
+              className="btn-primary uppercase tracking-[0.2em] text-xs inline-flex items-center justify-center px-10 py-3"
+            >
+              Load More
+            </Link>
+
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted mt-3">
+              Load next{' '}
+              {Math.min(
+                LOAD_SIZE,
+                totalJerseys -
+                  actualLoadedCount
+              )}{' '}
+              jerseys
+            </p>
           </div>
-        </div>
-      )}
+        ) : (
+          totalJerseys > 0 && (
+            <div className="border-t border-bayern-border py-6 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-bayern-muted">
+                All {totalJerseys} jerseys
+                loaded
+              </p>
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }
