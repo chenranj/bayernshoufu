@@ -6,6 +6,8 @@ import { JerseyGrid } from '@/components/jersey-grid';
 
 export const dynamic = 'force-dynamic';
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 export default async function PlayerDetailPage({
   params,
 }: {
@@ -48,6 +50,27 @@ export default async function PlayerDetailPage({
       .order('name'),
   ]);
 
+  const userId = user?.id ?? null;
+
+  // Get current user's role
+  let userRole: UserRole | null = null;
+
+  if (userId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (
+      profile?.role === 'user' ||
+      profile?.role === 'viewer' ||
+      profile?.role === 'admin'
+    ) {
+      userRole = profile.role;
+    }
+  }
+
   const jerseyIds = (links ?? []).map(
     (l) => l.jersey_id
   );
@@ -56,7 +79,7 @@ export default async function PlayerDetailPage({
     ? await supabase
         .from('jerseys')
         .select(
-          'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order'
+          'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order, price, buyer_premium, sale_type'
         )
         .in('id', jerseyIds)
         .order('release_year', { ascending: false })
@@ -186,8 +209,6 @@ export default async function PlayerDetailPage({
     ])
   );
 
-  const userId = user?.id ?? null;
-
   const { data: favs } = userId
     ? await supabase
         .from('favorite_jerseys')
@@ -267,8 +288,7 @@ export default async function PlayerDetailPage({
 
       {(jerseys ?? []).length === 0 ? (
         <div className="border border-dashed border-bayern-border py-20 text-center text-bayern-muted">
-          No jerseys linked to this player
-          yet.
+          No jerseys linked to this player yet.
         </div>
       ) : (
         <JerseyGrid
@@ -276,11 +296,10 @@ export default async function PlayerDetailPage({
           seasons={seasons ?? []}
           competitionMap={competitionMap}
           galleryMap={galleryMap}
-          playersByJersey={
-            playersByJersey
-          }
+          playersByJersey={playersByJersey}
           favorites={favSet}
           isLoggedIn={!!user}
+          userRole={userRole}
         />
       )}
     </div>
