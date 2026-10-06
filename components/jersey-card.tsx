@@ -29,6 +29,8 @@ type LinkedPlayer = {
   slug: string;
 };
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 export function JerseyCard({
   jersey,
   season,
@@ -37,6 +39,7 @@ export function JerseyCard({
   players,
   isFavorite,
   isLoggedIn,
+  userRole,
 }: {
   jersey: Jersey;
   season: Season | null;
@@ -45,6 +48,7 @@ export function JerseyCard({
   players: LinkedPlayer[];
   isFavorite: boolean;
   isLoggedIn: boolean;
+  userRole: UserRole | null;
 }) {
   const [fav, setFav] = useState(isFavorite);
   const [, startTransition] = useTransition();
@@ -301,6 +305,7 @@ export function JerseyCard({
           galleryImageIds={galleryImageIds}
           players={players}
           isFavorite={fav}
+          userRole={userRole}
           onToggleFavorite={toggleFav}
           onClose={() => setOpen(false)}
         />
