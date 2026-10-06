@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { DeleteAccountForm } from '@/components/delete-account-form';
 import { AcceptCounterOfferButton } from '@/components/accept-counter-offer-button';
+import { BuyerCounterOfferForm } from '@/components/buyer-counter-offer-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -371,6 +372,9 @@ export default async function AccountPage() {
       offerId={offer.id}
       amount={Number(offer.current_amount)}
     />
+    <BuyerCounterOfferForm
+  offerId={offer.id}
+/>
   </div>
 )}
                 </article>
