@@ -1621,6 +1621,312 @@ export async function sendBuyerDeclinedAdminEmail({
 }
 
 // =============================================================================
+// ADMIN: BUYER ACCEPTED SELLER COUNTER EMAIL
+// =============================================================================
+
+type SendBuyerAcceptedAdminEmailParams = {
+  jerseyName: string;
+  amount: number;
+  buyerEmail?: string | null;
+  paymentExpiresAt?: string | null;
+};
+
+export async function sendBuyerAcceptedAdminEmail({
+  jerseyName,
+  amount,
+  buyerEmail,
+  paymentExpiresAt,
+}: SendBuyerAcceptedAdminEmailParams) {
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error(
+      '[sendBuyerAcceptedAdminEmail] RESEND_API_KEY is not configured'
+    );
+    return;
+  }
+
+  if (!adminEmail) {
+    console.error(
+      '[sendBuyerAcceptedAdminEmail] ADMIN_NOTIFICATION_EMAIL is not configured'
+    );
+    return;
+  }
+
+  const formattedAmount = formatCurrency(amount);
+  const adminOffersUrl = `${SITE_URL}/admin/offers`;
+
+  const deadline = paymentExpiresAt
+    ? new Date(paymentExpiresAt).toLocaleString('en-US', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+        timeZone: 'America/Toronto',
+      })
+    : null;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `Buyer accepted counter offer — ${formattedAmount}`,
+      html: `
+        <!doctype html>
+        <html>
+          <body
+            style="
+              margin:0;
+              padding:0;
+              background:#f5f5f5;
+              font-family:Arial,Helvetica,sans-serif;
+              color:#111111;
+            "
+          >
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="background:#f5f5f5;padding:40px 16px;"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      max-width:600px;
+                      background:#ffffff;
+                      border:1px solid #e5e5e5;
+                    "
+                  >
+                    <tr>
+                      <td style="padding:36px 36px 20px 36px;">
+                        <div
+                          style="
+                            font-size:22px;
+                            font-weight:700;
+                            letter-spacing:1px;
+                          "
+                        >
+                          SHOUFU JERSEY®
+                        </div>
+
+                        <div
+                          style="
+                            margin-top:6px;
+                            font-size:11px;
+                            letter-spacing:2px;
+                            color:#777777;
+                          "
+                        >
+                          PRIVATE ARCHIVE • EST. 2021
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style="padding:12px 36px 36px 36px;">
+                        <div
+                          style="
+                            font-size:12px;
+                            letter-spacing:1.5px;
+                            color:#777777;
+                            margin-bottom:12px;
+                          "
+                        >
+                          BUYER ACCEPTED
+                        </div>
+
+                        <h1
+                          style="
+                            margin:0 0 20px 0;
+                            font-size:28px;
+                            line-height:1.2;
+                            font-weight:700;
+                          "
+                        >
+                          The buyer accepted your counter offer.
+                        </h1>
+
+                        <p
+                          style="
+                            margin:0 0 24px 0;
+                            font-size:15px;
+                            line-height:1.7;
+                            color:#444444;
+                          "
+                        >
+                          The buyer has accepted the seller counter
+                          offer for
+                          <strong>${escapeHtml(jerseyName)}</strong>.
+                        </p>
+
+                        <div
+                          style="
+                            border-top:1px solid #e5e5e5;
+                            border-bottom:1px solid #e5e5e5;
+                            padding:22px 0;
+                            margin-bottom:24px;
+                          "
+                        >
+                          <div
+                            style="
+                              font-size:11px;
+                              letter-spacing:1.5px;
+                              color:#777777;
+                              margin-bottom:8px;
+                            "
+                          >
+                            ACCEPTED AMOUNT
+                          </div>
+
+                          <div
+                            style="
+                              font-size:30px;
+                              font-weight:700;
+                            "
+                          >
+                            ${formattedAmount}
+                          </div>
+                        </div>
+
+                        ${
+                          buyerEmail
+                            ? `
+                              <div
+                                style="
+                                  margin-bottom:20px;
+                                  font-size:14px;
+                                  line-height:1.6;
+                                "
+                              >
+                                <strong>Buyer:</strong>
+                                ${escapeHtml(buyerEmail)}
+                              </div>
+                            `
+                            : ''
+                        }
+
+                        ${
+                          deadline
+                            ? `
+                              <div
+                                style="
+                                  background:#f7f7f7;
+                                  padding:18px;
+                                  margin-bottom:24px;
+                                "
+                              >
+                                <div
+                                  style="
+                                    font-size:11px;
+                                    letter-spacing:1.5px;
+                                    color:#777777;
+                                    margin-bottom:8px;
+                                  "
+                                >
+                                  PAYMENT DEADLINE
+                                </div>
+
+                                <div
+                                  style="
+                                    font-size:17px;
+                                    font-weight:700;
+                                    line-height:1.5;
+                                  "
+                                >
+                                  ${escapeHtml(deadline)}
+                                </div>
+
+                                <div
+                                  style="
+                                    margin-top:10px;
+                                    font-size:13px;
+                                    line-height:1.6;
+                                    color:#555555;
+                                  "
+                                >
+                                  The buyer now has 24 hours to
+                                  complete payment.
+                                </div>
+                              </div>
+                            `
+                            : ''
+                        }
+
+                        <p
+                          style="
+                            margin:0 0 26px 0;
+                            font-size:14px;
+                            line-height:1.7;
+                            color:#555555;
+                          "
+                        >
+                          The offer is now accepted and the payment
+                          window has started.
+                        </p>
+
+                        <a
+                          href="${adminOffersUrl}"
+                          style="
+                            display:inline-block;
+                            background:#111111;
+                            color:#ffffff;
+                            text-decoration:none;
+                            padding:14px 24px;
+                            font-size:12px;
+                            font-weight:700;
+                            letter-spacing:1.2px;
+                          "
+                        >
+                          VIEW OFFER
+                        </a>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        style="
+                          border-top:1px solid #eeeeee;
+                          padding:24px 36px;
+                          font-size:11px;
+                          line-height:1.6;
+                          color:#888888;
+                        "
+                      >
+                        SHOUFU JERSEY®<br />
+                        Admin offer notification.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error(
+        '[sendBuyerAcceptedAdminEmail] Resend error',
+        error
+      );
+    }
+  } catch (error) {
+    console.error(
+      '[sendBuyerAcceptedAdminEmail] unexpected error',
+      error
+    );
+  }
+}
+
+// =============================================================================
 // HELPERS
 // =============================================================================
 
