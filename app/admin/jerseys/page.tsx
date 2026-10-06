@@ -344,9 +344,10 @@ export default async function JerseysAdmin() {
           return (
             <form
               key={j.id}
+              id={`jersey-${j.id}`}
               action={updateJersey}
               encType="multipart/form-data"
-              className="bg-bayern-surface border border-bayern-border p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
+              className="bg-bayern-surface border border-bayern-border p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-start scroll-mt-6"
             >
               <input
                 type="hidden"
