@@ -1240,3 +1240,266 @@ export async function deleteUser(formData: FormData) {
     'User deleted'
   );
 }
+
+// =============================================================================
+// OFFERS
+// =============================================================================
+
+export async function acceptOffer(formData: FormData) {
+  const adminUser = await ensureAdmin();
+
+  const offerId = String(formData.get('offer_id') || '').trim();
+
+  if (!offerId) {
+    flashError('/admin/offers', 'Offer ID required');
+  }
+
+  const admin = createAdminClient();
+
+  const { data: offer, error: offerError } = await admin
+    .from('offers')
+    .select('id, current_amount, status')
+    .eq('id', offerId)
+    .maybeSingle();
+
+  if (offerError || !offer) {
+    flashError(
+      '/admin/offers',
+      offerError?.message ?? 'Offer not found'
+    );
+  }
+
+  if (
+    offer!.status !== 'pending' &&
+    offer!.status !== 'countered'
+  ) {
+    flashError(
+      '/admin/offers',
+      'This offer can no longer be accepted'
+    );
+  }
+
+  const acceptedAmount = Number(offer!.current_amount);
+
+  if (
+    !Number.isFinite(acceptedAmount) ||
+    acceptedAmount <= 0
+  ) {
+    flashError('/admin/offers', 'Invalid offer amount');
+  }
+
+  // Payment expires exactly 24 hours after acceptance.
+  const paymentExpiresAt = new Date(
+    Date.now() + 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { error: updateError } = await admin
+    .from('offers')
+    .update({
+      status: 'accepted',
+      accepted_amount: acceptedAmount,
+      payment_expires_at: paymentExpiresAt,
+    })
+    .eq('id', offerId)
+    .in('status', ['pending', 'countered']);
+
+  if (updateError) {
+    flashError('/admin/offers', updateError.message);
+  }
+
+  const { error: messageError } = await admin
+    .from('offer_messages')
+    .insert({
+      offer_id: offerId,
+      sender_id: adminUser.id,
+      amount: acceptedAmount,
+      message:
+        'Offer accepted. Payment is due within 24 hours.',
+    });
+
+  if (messageError) {
+    console.error(
+      '[acceptOffer] message insert failed',
+      messageError
+    );
+  }
+
+  revalidatePath('/admin/offers');
+  revalidatePath('/offers');
+
+  flashRedirect(
+    '/admin/offers',
+    'Offer accepted — 24 hour payment window started'
+  );
+}
+
+export async function counterOffer(formData: FormData) {
+  const adminUser = await ensureAdmin();
+
+  const offerId = String(formData.get('offer_id') || '').trim();
+
+  const amountValue = String(
+    formData.get('counter_amount') || ''
+  ).trim();
+
+  const message =
+    String(formData.get('message') || '').trim() || null;
+
+  const amount = Number(amountValue);
+
+  if (!offerId) {
+    flashError('/admin/offers', 'Offer ID required');
+  }
+
+  if (
+    !amountValue ||
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    flashError(
+      '/admin/offers',
+      'Please enter a valid counter amount'
+    );
+  }
+
+  const normalizedAmount =
+    Math.round(amount * 100) / 100;
+
+  const admin = createAdminClient();
+
+  const { data: offer, error: offerError } = await admin
+    .from('offers')
+    .select('id, status')
+    .eq('id', offerId)
+    .maybeSingle();
+
+  if (offerError || !offer) {
+    flashError(
+      '/admin/offers',
+      offerError?.message ?? 'Offer not found'
+    );
+  }
+
+  if (
+    offer!.status !== 'pending' &&
+    offer!.status !== 'countered'
+  ) {
+    flashError(
+      '/admin/offers',
+      'This offer can no longer be countered'
+    );
+  }
+
+  const { error: updateError } = await admin
+    .from('offers')
+    .update({
+      current_amount: normalizedAmount,
+      status: 'countered',
+      accepted_amount: null,
+      payment_expires_at: null,
+    })
+    .eq('id', offerId)
+    .in('status', ['pending', 'countered']);
+
+  if (updateError) {
+    flashError('/admin/offers', updateError.message);
+  }
+
+  const { error: messageError } = await admin
+    .from('offer_messages')
+    .insert({
+      offer_id: offerId,
+      sender_id: adminUser.id,
+      amount: normalizedAmount,
+      message: message || 'Counter offer',
+    });
+
+  if (messageError) {
+    console.error(
+      '[counterOffer] message insert failed',
+      messageError
+    );
+  }
+
+  revalidatePath('/admin/offers');
+  revalidatePath('/offers');
+
+  flashRedirect(
+    '/admin/offers',
+    `Counter offer sent: $${normalizedAmount.toFixed(2)}`
+  );
+}
+
+export async function declineOffer(formData: FormData) {
+  const adminUser = await ensureAdmin();
+
+  const offerId = String(formData.get('offer_id') || '').trim();
+
+  const message =
+    String(formData.get('message') || '').trim() ||
+    'Offer declined.';
+
+  if (!offerId) {
+    flashError('/admin/offers', 'Offer ID required');
+  }
+
+  const admin = createAdminClient();
+
+  const { data: offer, error: offerError } = await admin
+    .from('offers')
+    .select('id, status')
+    .eq('id', offerId)
+    .maybeSingle();
+
+  if (offerError || !offer) {
+    flashError(
+      '/admin/offers',
+      offerError?.message ?? 'Offer not found'
+    );
+  }
+
+  if (
+    offer!.status !== 'pending' &&
+    offer!.status !== 'countered'
+  ) {
+    flashError(
+      '/admin/offers',
+      'This offer can no longer be declined'
+    );
+  }
+
+  const { error: updateError } = await admin
+    .from('offers')
+    .update({
+      status: 'declined',
+      accepted_amount: null,
+      payment_expires_at: null,
+    })
+    .eq('id', offerId)
+    .in('status', ['pending', 'countered']);
+
+  if (updateError) {
+    flashError('/admin/offers', updateError.message);
+  }
+
+  const { error: messageError } = await admin
+    .from('offer_messages')
+    .insert({
+      offer_id: offerId,
+      sender_id: adminUser.id,
+      amount: null,
+      message,
+    });
+
+  if (messageError) {
+    console.error(
+      '[declineOffer] message insert failed',
+      messageError
+    );
+  }
+
+  revalidatePath('/admin/offers');
+  revalidatePath('/offers');
+
+  flashRedirect('/admin/offers', 'Offer declined');
+}
