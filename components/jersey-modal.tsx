@@ -230,33 +230,60 @@ export function JerseyModal({
             </div>
           )}
 
-          {/* PRICE + BUYER'S PREMIUM */}
-          {jersey.price != null && (
-            <div className="border-t border-bayern-border pt-5">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
-                  Price
-                </p>
+          {/* SALE TYPE / PRICE / BUYER'S PREMIUM */}
+          <div className="border-t border-bayern-border pt-5">
+            {jersey.sale_type === 'offer_only' ? (
+              <>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                    Sale Type
+                  </p>
 
-                <p className="text-xl font-semibold">
-                  ${Number(jersey.price).toLocaleString('en-CA', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-              </div>
+                  <p className="text-xl font-semibold uppercase">
+                    By Offer Only
+                  </p>
+                </div>
 
-              <div className="mt-4">
-                <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
-                  Buyer&apos;s Premium
-                </p>
+                <div className="mt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                    Buyer&apos;s Premium
+                  </p>
 
-                <p className="text-sm font-semibold">
-                  {jersey.buyer_premium}%
-                </p>
-              </div>
-            </div>
-          )}
+                  <p className="text-sm font-semibold">
+                    {jersey.buyer_premium ?? 10}%
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                {jersey.price != null && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                      Price
+                    </p>
+
+                    <p className="text-xl font-semibold">
+                      $
+                      {Number(jersey.price).toLocaleString('en-CA', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
+                    Buyer&apos;s Premium
+                  </p>
+
+                  <p className="text-sm font-semibold">
+                    {jersey.buyer_premium ?? 10}%
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
 
           <div>
             <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
