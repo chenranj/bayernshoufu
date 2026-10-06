@@ -789,7 +789,7 @@ export async function updateJersey(formData: FormData) {
   revalidatePath('/admin/jerseys');
   revalidatePath('/jerseys');
 
-  flashRedirect('/admin/jerseys', 'Saved!');
+  flashRedirect(`/admin/jerseys#jersey-${id}`, 'Saved!');
 }
 
 export async function deleteJersey(formData: FormData) {
