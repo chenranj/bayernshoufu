@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { sendOfferCounterEmail } from '@/lib/email';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 
@@ -1336,7 +1337,9 @@ export async function acceptOffer(formData: FormData) {
 export async function counterOffer(formData: FormData) {
   const adminUser = await ensureAdmin();
 
-  const offerId = String(formData.get('offer_id') || '').trim();
+  const offerId = String(
+    formData.get('offer_id') || ''
+  ).trim();
 
   const amountValue = String(
     formData.get('counter_amount') || ''
@@ -1367,9 +1370,15 @@ export async function counterOffer(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // Get offer + buyer + jersey information for the email.
   const { data: offer, error: offerError } = await admin
     .from('offers')
-    .select('id, status')
+    .select(`
+      id,
+      status,
+      user_id,
+      jersey_id
+    `)
     .eq('id', offerId)
     .maybeSingle();
 
@@ -1387,6 +1396,28 @@ export async function counterOffer(formData: FormData) {
     flashError(
       '/admin/offers',
       'This offer can no longer be countered'
+    );
+  }
+
+  // Get jersey name.
+  const { data: jersey } = await admin
+    .from('jerseys')
+    .select('name')
+    .eq('id', offer!.jersey_id)
+    .maybeSingle();
+
+  // Get buyer email from Supabase Auth.
+  const {
+    data: buyerData,
+    error: buyerError,
+  } = await admin.auth.admin.getUserById(
+    offer!.user_id
+  );
+
+  if (buyerError) {
+    console.error(
+      '[counterOffer] buyer lookup failed',
+      buyerError
     );
   }
 
@@ -1421,15 +1452,39 @@ export async function counterOffer(formData: FormData) {
     );
   }
 
+  // Send email to buyer.
+  // Email failure must not undo the counter offer.
+  const buyerEmail = buyerData?.user?.email;
+
+  if (buyerEmail) {
+    try {
+      await sendOfferCounterEmail({
+        to: buyerEmail,
+        jerseyName: jersey?.name || 'Jersey',
+        amount: normalizedAmount,
+        message,
+      });
+    } catch (emailError) {
+      console.error(
+        '[counterOffer] buyer email failed',
+        emailError
+      );
+    }
+  } else {
+    console.error(
+      '[counterOffer] buyer email not found'
+    );
+  }
+
   revalidatePath('/admin/offers');
   revalidatePath('/offers');
+  revalidatePath('/account');
 
   flashRedirect(
     '/admin/offers',
     `Counter offer sent: $${normalizedAmount.toFixed(2)}`
   );
 }
-
 export async function declineOffer(formData: FormData) {
   const adminUser = await ensureAdmin();
 
