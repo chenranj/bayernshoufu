@@ -18,7 +18,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. 读取提交内容
+    // 2. Admin 不允许 Make Offer
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Profile lookup error:', profileError);
+
+      return NextResponse.json(
+        { error: 'Unable to verify your account.' },
+        { status: 500 }
+      );
+    }
+
+    if (profile?.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Admin accounts cannot make offers.' },
+        { status: 403 }
+      );
+    }
+
+    // 3. 读取提交内容
     const body = await request.json();
 
     const jerseyId = String(body.jersey_id || '').trim();
@@ -42,7 +65,7 @@ export async function POST(request: Request) {
     // 金额最多保留两位小数
     const normalizedAmount = Math.round(amount * 100) / 100;
 
-    // 3. 确认球衣存在，而且确实是 By Offer Only
+    // 4. 确认球衣存在，而且确实是 By Offer Only
     const { data: jersey, error: jerseyError } = await supabase
       .from('jerseys')
       .select('id, name, sale_type')
@@ -63,7 +86,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. 创建 Offer
+    // 5. 创建 Offer
     const { data: offer, error: offerError } = await supabase
       .from('offers')
       .insert({
@@ -85,7 +108,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. 创建第一条报价消息
+    // 6. 创建第一条报价消息
     const { error: messageError } = await supabase
       .from('offer_messages')
       .insert({
@@ -98,8 +121,6 @@ export async function POST(request: Request) {
     if (messageError) {
       console.error('Create offer message error:', messageError);
 
-      // 如果第一条消息创建失败，删除刚刚创建的 offer，
-      // 避免留下不完整的数据。
       await supabase
         .from('offers')
         .delete()
@@ -111,7 +132,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. 成功
+    // 7. 成功
     return NextResponse.json({
       success: true,
       offer_id: offer.id,
