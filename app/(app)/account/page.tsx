@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { DeleteAccountForm } from '@/components/delete-account-form';
 import { AcceptCounterOfferButton } from '@/components/accept-counter-offer-button';
 import { BuyerCounterOfferForm } from '@/components/buyer-counter-offer-form';
+import { BuyerDeclineOfferButton } from '@/components/buyer-decline-offer-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,9 @@ export default async function AccountPage() {
   const { data: messages } = offerIds.length
     ? await supabase
         .from('offer_messages')
-        .select('id, offer_id, sender_id, message, amount, created_at')
+        .select(
+          'id, offer_id, sender_id, message, amount, created_at'
+        )
         .in('offer_id', offerIds)
         .order('created_at', { ascending: true })
     : { data: [] as any[] };
@@ -73,7 +76,8 @@ export default async function AccountPage() {
   const messagesByOffer = new Map<string, any[]>();
 
   for (const message of messages ?? []) {
-    const list = messagesByOffer.get(message.offer_id) ?? [];
+    const list =
+      messagesByOffer.get(message.offer_id) ?? [];
 
     list.push(message);
 
@@ -128,7 +132,9 @@ export default async function AccountPage() {
 
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between border-b border-bayern-border pb-2 gap-4">
-            <dt className="text-bayern-muted">Email</dt>
+            <dt className="text-bayern-muted">
+              Email
+            </dt>
 
             <dd className="font-mono text-right">
               {profile?.email}
@@ -136,7 +142,9 @@ export default async function AccountPage() {
           </div>
 
           <div className="flex justify-between border-b border-bayern-border pb-2 gap-4">
-            <dt className="text-bayern-muted">Name</dt>
+            <dt className="text-bayern-muted">
+              Name
+            </dt>
 
             <dd className="text-right">
               {profile?.display_name ?? '—'}
@@ -144,7 +152,9 @@ export default async function AccountPage() {
           </div>
 
           <div className="flex justify-between border-b border-bayern-border pb-2 gap-4">
-            <dt className="text-bayern-muted">Role</dt>
+            <dt className="text-bayern-muted">
+              Role
+            </dt>
 
             <dd className="uppercase">
               {profile?.role}
@@ -152,11 +162,15 @@ export default async function AccountPage() {
           </div>
 
           <div className="flex justify-between gap-4">
-            <dt className="text-bayern-muted">Joined</dt>
+            <dt className="text-bayern-muted">
+              Joined
+            </dt>
 
             <dd>
               {profile?.created_at
-                ? new Date(profile.created_at).toLocaleDateString()
+                ? new Date(
+                    profile.created_at
+                  ).toLocaleDateString()
                 : '—'}
             </dd>
           </div>
@@ -178,7 +192,9 @@ export default async function AccountPage() {
 
           <span className="text-xs uppercase tracking-widest text-bayern-muted">
             {(offers ?? []).length}{' '}
-            {(offers ?? []).length === 1 ? 'Offer' : 'Offers'}
+            {(offers ?? []).length === 1
+              ? 'Offer'
+              : 'Offers'}
           </span>
         </div>
 
@@ -189,7 +205,9 @@ export default async function AccountPage() {
         ) : (
           <div className="space-y-6">
             {(offers ?? []).map((offer) => {
-              const jersey = jerseyMap.get(offer.jersey_id);
+              const jersey = jerseyMap.get(
+                offer.jersey_id
+              );
 
               const offerMessages =
                 messagesByOffer.get(offer.id) ?? [];
@@ -230,7 +248,9 @@ export default async function AccountPage() {
                       </p>
 
                       <p className="mt-2 text-xl font-semibold">
-                        {formatMoney(offer.initial_amount)}
+                        {formatMoney(
+                          offer.initial_amount
+                        )}
                       </p>
                     </div>
 
@@ -240,7 +260,9 @@ export default async function AccountPage() {
                       </p>
 
                       <p className="mt-2 text-xl font-semibold">
-                        {formatMoney(offer.current_amount)}
+                        {formatMoney(
+                          offer.current_amount
+                        )}
                       </p>
                     </div>
 
@@ -282,8 +304,9 @@ export default async function AccountPage() {
                           </p>
 
                           <p className="mt-2 text-xs text-bayern-muted">
-                            Payment must be completed within the
-                            24-hour payment window.
+                            Payment must be completed
+                            within the 24-hour payment
+                            window.
                           </p>
                         </>
                       )}
@@ -302,81 +325,97 @@ export default async function AccountPage() {
                       </p>
                     ) : (
                       <div className="space-y-3">
-                        {offerMessages.map((message) => {
-                          const isBuyer =
-                            message.sender_id === user.id;
+                        {offerMessages.map(
+                          (message) => {
+                            const isBuyer =
+                              message.sender_id ===
+                              user.id;
 
-                          return (
-                            <div
-                              key={message.id}
-                              className={
-                                isBuyer
-                                  ? 'border border-bayern-border p-4'
-                                  : 'border border-bayern-red/40 bg-bayern-red/5 p-4'
-                              }
-                            >
-                              <div className="flex items-center justify-between gap-4">
-                                <span
-                                  className={
-                                    isBuyer
-                                      ? 'text-[10px] uppercase tracking-widest text-bayern-muted'
-                                      : 'text-[10px] uppercase tracking-widest text-bayern-red'
-                                  }
-                                >
-                                  {isBuyer
-                                    ? 'You'
-                                    : 'Seller'}
-                                </span>
+                            return (
+                              <div
+                                key={message.id}
+                                className={
+                                  isBuyer
+                                    ? 'border border-bayern-border p-4'
+                                    : 'border border-bayern-red/40 bg-bayern-red/5 p-4'
+                                }
+                              >
+                                <div className="flex items-center justify-between gap-4">
+                                  <span
+                                    className={
+                                      isBuyer
+                                        ? 'text-[10px] uppercase tracking-widest text-bayern-muted'
+                                        : 'text-[10px] uppercase tracking-widest text-bayern-red'
+                                    }
+                                  >
+                                    {isBuyer
+                                      ? 'You'
+                                      : 'Seller'}
+                                  </span>
 
-                                <span className="text-[10px] text-bayern-muted">
-                                  {new Date(
-                                    message.created_at
-                                  ).toLocaleString()}
-                                </span>
+                                  <span className="text-[10px] text-bayern-muted">
+                                    {new Date(
+                                      message.created_at
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+
+                                {message.amount !=
+                                  null && (
+                                  <p className="mt-3 text-lg font-semibold">
+                                    {formatMoney(
+                                      message.amount
+                                    )}
+                                  </p>
+                                )}
+
+                                {message.message && (
+                                  <p className="mt-2 text-sm leading-relaxed">
+                                    {message.message}
+                                  </p>
+                                )}
                               </div>
-
-                              {message.amount != null && (
-                                <p className="mt-3 text-lg font-semibold">
-                                  {formatMoney(message.amount)}
-                                </p>
-                              )}
-
-                              {message.message && (
-                                <p className="mt-2 text-sm leading-relaxed">
-                                  {message.message}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          }
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* COUNTER NOTICE */}
-{offer.status === 'countered' && (
-  <div className="border-t border-yellow-500/30 bg-yellow-500/5 p-5">
-    <p className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">
-      Seller Counter Offer
-    </p>
+                  {/* SELLER COUNTER OFFER */}
+                  {offer.status === 'countered' && (
+                    <div className="border-t border-yellow-500/30 bg-yellow-500/5 p-5">
+                      <p className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">
+                        Seller Counter Offer
+                      </p>
 
-    <p className="mt-2 text-2xl font-semibold">
-      {formatMoney(offer.current_amount)}
-    </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {formatMoney(
+                          offer.current_amount
+                        )}
+                      </p>
 
-    <p className="mt-2 text-sm text-bayern-muted">
-      The seller has sent you a counter offer.
-    </p>
+                      <p className="mt-2 text-sm text-bayern-muted">
+                        The seller has sent you a
+                        counter offer.
+                      </p>
 
-    <AcceptCounterOfferButton
-      offerId={offer.id}
-      amount={Number(offer.current_amount)}
-    />
-    <BuyerCounterOfferForm
-  offerId={offer.id}
-/>
-  </div>
-)}
+                      <AcceptCounterOfferButton
+                        offerId={offer.id}
+                        amount={Number(
+                          offer.current_amount
+                        )}
+                      />
+
+                      <BuyerCounterOfferForm
+                        offerId={offer.id}
+                      />
+
+                      <BuyerDeclineOfferButton
+                        offerId={offer.id}
+                      />
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -391,8 +430,9 @@ export default async function AccountPage() {
         </h2>
 
         <p className="text-sm text-bayern-muted mb-4">
-          Permanently delete your account, favorites, and any
-          session data. This cannot be undone.
+          Permanently delete your account,
+          favorites, and any session data. This
+          cannot be undone.
         </p>
 
         <DeleteAccountForm
