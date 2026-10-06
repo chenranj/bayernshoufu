@@ -1688,6 +1688,12 @@ export async function declineOffer(formData: FormData) {
   // Email failure must NOT undo the declined offer.
   const buyerEmail = buyerData?.user?.email;
 
+  console.log('[declineOffer] preparing decline email', {
+  buyerEmail,
+  jerseyName: jersey?.name || 'Jersey',
+  declinedAmount,
+});
+  
   if (buyerEmail) {
     try {
       await sendOfferDeclinedEmail({
