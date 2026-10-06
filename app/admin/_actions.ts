@@ -643,6 +643,17 @@ export async function updateJersey(formData: FormData) {
   await ensureAdmin();
 
   const id = String(formData.get('id'));
+
+  // Remember current Admin Jerseys position/state.
+  const loadedCount = Math.max(
+    20,
+    Number(formData.get('loaded_count') || 20) || 20
+  );
+
+  const adminQuery = String(
+    formData.get('admin_query') || ''
+  ).trim();
+
   const name = String(formData.get('name') || '').trim();
   const seasonId = String(formData.get('season_id') || '');
 
@@ -786,10 +797,21 @@ export async function updateJersey(formData: FormData) {
       .insert(rows);
   }
 
-  revalidatePath('/admin/jerseys');
-  revalidatePath('/jerseys');
+revalidatePath('/admin/jerseys');
+revalidatePath('/jerseys');
 
-  flashRedirect(`/admin/jerseys#jersey-${id}`, 'Saved!');
+const params = new URLSearchParams();
+
+params.set('limit', String(loadedCount));
+params.set('saved', 'Saved');
+
+if (adminQuery) {
+  params.set('q', adminQuery);
+}
+
+redirect(
+  `/admin/jerseys?${params.toString()}#jersey-${id}`
+);
 }
 
 export async function deleteJersey(formData: FormData) {
