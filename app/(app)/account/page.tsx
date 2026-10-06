@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { DeleteAccountForm } from '@/components/delete-account-form';
+import { AcceptCounterOfferButton } from '@/components/accept-counter-offer-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -352,21 +353,26 @@ export default async function AccountPage() {
                   </div>
 
                   {/* COUNTER NOTICE */}
-                  {offer.status === 'countered' && (
-                    <div className="border-t border-yellow-500/30 bg-yellow-500/5 p-5">
-                      <p className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">
-                        Seller Counter Offer
-                      </p>
+{offer.status === 'countered' && (
+  <div className="border-t border-yellow-500/30 bg-yellow-500/5 p-5">
+    <p className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">
+      Seller Counter Offer
+    </p>
 
-                      <p className="mt-2 text-2xl font-semibold">
-                        {formatMoney(offer.current_amount)}
-                      </p>
+    <p className="mt-2 text-2xl font-semibold">
+      {formatMoney(offer.current_amount)}
+    </p>
 
-                      <p className="mt-2 text-sm text-bayern-muted">
-                        The seller has sent you a counter offer.
-                      </p>
-                    </div>
-                  )}
+    <p className="mt-2 text-sm text-bayern-muted">
+      The seller has sent you a counter offer.
+    </p>
+
+    <AcceptCounterOfferButton
+      offerId={offer.id}
+      amount={Number(offer.current_amount)}
+    />
+  </div>
+)}
                 </article>
               );
             })}
