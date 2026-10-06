@@ -9,6 +9,8 @@ type LinkedPlayer = {
   slug: string;
 };
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 export function JerseyGrid({
   jerseys,
   seasons,
@@ -17,6 +19,7 @@ export function JerseyGrid({
   playersByJersey,
   favorites,
   isLoggedIn,
+  userRole,
   firstNewIndex = -1,
 }: {
   jerseys: Jersey[];
@@ -26,6 +29,7 @@ export function JerseyGrid({
   playersByJersey: Map<string, LinkedPlayer[]>;
   favorites: Set<string>;
   isLoggedIn: boolean;
+  userRole: UserRole | null;
   firstNewIndex?: number;
 }) {
   const seasonMap = new Map(
@@ -51,6 +55,7 @@ export function JerseyGrid({
             players={playersByJersey.get(j.id) ?? []}
             isFavorite={favorites.has(j.id)}
             isLoggedIn={isLoggedIn}
+            userRole={userRole}
           />
         </div>
       ))}
