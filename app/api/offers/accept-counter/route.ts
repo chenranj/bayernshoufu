@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const supabase = createClient();
 
-    // 1. Check login
+    // Check login
     const {
       data: { user },
       error: userError,
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Read offer ID
+    // Read offer ID
     const body = await request.json();
 
     const offerId = String(body.offer_id || '').trim();
@@ -30,89 +30,49 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Load the offer
-    // RLS ensures the buyer can only read their own offer.
-    const { data: offer, error: offerError } = await supabase
-      .from('offers')
-      .select(
-        'id, user_id, current_amount, status, payment_expires_at'
-      )
-      .eq('id', offerId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Call secure Supabase function.
+    // The database function verifies:
+    // 1. The offer belongs to the logged-in buyer
+    // 2. The offer is currently "countered"
+    // 3. The accepted amount is the current seller counter
+    // 4. The 24-hour payment window starts now
+    const { data, error } = await supabase.rpc(
+      'accept_counter_offer',
+      {
+        p_offer_id: offerId,
+      }
+    );
 
-    if (offerError) {
-      console.error('Load offer error:', offerError);
+    if (error) {
+      console.error('Accept counter RPC error:', error);
 
-      return NextResponse.json(
-        { error: 'Unable to load offer.' },
-        { status: 500 }
-      );
-    }
+      const message = error.message || '';
 
-    if (!offer) {
-      return NextResponse.json(
-        { error: 'Offer not found.' },
-        { status: 404 }
-      );
-    }
-
-    // 4. Only a seller counter can be accepted here
-    if (offer.status !== 'countered') {
-      return NextResponse.json(
-        {
-          error:
-            'This counter offer is no longer available.',
-        },
-        { status: 400 }
-      );
-    }
-
-    const acceptedAmount = Number(offer.current_amount);
-
-    if (
-      !Number.isFinite(acceptedAmount) ||
-      acceptedAmount <= 0
-    ) {
-      return NextResponse.json(
-        { error: 'Invalid offer amount.' },
-        { status: 400 }
-      );
-    }
-
-    // 5. Start 24-hour payment window
-    const paymentExpiresAt = new Date(
-      Date.now() + 24 * 60 * 60 * 1000
-    ).toISOString();
-
-    // 6. Accept seller counter
-    const { data: updatedOffer, error: updateError } =
-      await supabase
-        .from('offers')
-        .update({
-          status: 'accepted',
-          accepted_amount: acceptedAmount,
-          payment_expires_at: paymentExpiresAt,
-        })
-        .eq('id', offer.id)
-        .eq('user_id', user.id)
-        .eq('status', 'countered')
-        .select(
-          'id, status, accepted_amount, payment_expires_at'
-        )
-        .maybeSingle();
-
-    if (updateError) {
-      console.error(
-        'Accept counter update error:',
-        updateError
-      );
+      if (
+        message.toLowerCase().includes('not found') ||
+        message.toLowerCase().includes('not available') ||
+        message.toLowerCase().includes('counter')
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'This counter offer is no longer available.',
+          },
+          { status: 409 }
+        );
+      }
 
       return NextResponse.json(
         { error: 'Unable to accept counter offer.' },
         { status: 500 }
       );
     }
+
+    // Supabase RPC may return one row or an array depending
+    // on the SQL function return type.
+    const updatedOffer = Array.isArray(data)
+      ? data[0] ?? null
+      : data;
 
     if (!updatedOffer) {
       return NextResponse.json(
