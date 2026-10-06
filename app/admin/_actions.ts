@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendOfferCounterEmail } from '@/lib/email';
+import {
+  sendOfferCounterEmail,
+  sendOfferAcceptedEmail,
+} from '@/lib/email';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 
@@ -1245,11 +1248,12 @@ export async function deleteUser(formData: FormData) {
 // =============================================================================
 // OFFERS
 // =============================================================================
-
 export async function acceptOffer(formData: FormData) {
   const adminUser = await ensureAdmin();
 
-  const offerId = String(formData.get('offer_id') || '').trim();
+  const offerId = String(
+    formData.get('offer_id') || ''
+  ).trim();
 
   if (!offerId) {
     flashError('/admin/offers', 'Offer ID required');
@@ -1257,9 +1261,16 @@ export async function acceptOffer(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // Get offer information.
   const { data: offer, error: offerError } = await admin
     .from('offers')
-    .select('id, current_amount, status')
+    .select(`
+      id,
+      current_amount,
+      status,
+      user_id,
+      jersey_id
+    `)
     .eq('id', offerId)
     .maybeSingle();
 
@@ -1280,13 +1291,18 @@ export async function acceptOffer(formData: FormData) {
     );
   }
 
-  const acceptedAmount = Number(offer!.current_amount);
+  const acceptedAmount = Number(
+    offer!.current_amount
+  );
 
   if (
     !Number.isFinite(acceptedAmount) ||
     acceptedAmount <= 0
   ) {
-    flashError('/admin/offers', 'Invalid offer amount');
+    flashError(
+      '/admin/offers',
+      'Invalid offer amount'
+    );
   }
 
   // Payment expires exactly 24 hours after acceptance.
@@ -1294,6 +1310,39 @@ export async function acceptOffer(formData: FormData) {
     Date.now() + 24 * 60 * 60 * 1000
   ).toISOString();
 
+  // Get jersey name for the acceptance email.
+  const {
+    data: jersey,
+    error: jerseyError,
+  } = await admin
+    .from('jerseys')
+    .select('name')
+    .eq('id', offer!.jersey_id)
+    .maybeSingle();
+
+  if (jerseyError) {
+    console.error(
+      '[acceptOffer] jersey lookup failed',
+      jerseyError
+    );
+  }
+
+  // Get buyer email from Supabase Auth.
+  const {
+    data: buyerData,
+    error: buyerError,
+  } = await admin.auth.admin.getUserById(
+    offer!.user_id
+  );
+
+  if (buyerError) {
+    console.error(
+      '[acceptOffer] buyer lookup failed',
+      buyerError
+    );
+  }
+
+  // Accept the offer.
   const { error: updateError } = await admin
     .from('offers')
     .update({
@@ -1305,9 +1354,13 @@ export async function acceptOffer(formData: FormData) {
     .in('status', ['pending', 'countered']);
 
   if (updateError) {
-    flashError('/admin/offers', updateError.message);
+    flashError(
+      '/admin/offers',
+      updateError.message
+    );
   }
 
+  // Add acceptance to offer history.
   const { error: messageError } = await admin
     .from('offer_messages')
     .insert({
@@ -1325,14 +1378,41 @@ export async function acceptOffer(formData: FormData) {
     );
   }
 
+  // Send acceptance email to buyer.
+  // Email failure must NOT undo the accepted offer.
+  const buyerEmail = buyerData?.user?.email;
+
+  if (buyerEmail) {
+    try {
+      await sendOfferAcceptedEmail({
+        to: buyerEmail,
+        jerseyName:
+          jersey?.name || 'Jersey',
+        acceptedAmount,
+        paymentExpiresAt,
+      });
+    } catch (emailError) {
+      console.error(
+        '[acceptOffer] buyer email failed',
+        emailError
+      );
+    }
+  } else {
+    console.error(
+      '[acceptOffer] buyer email not found'
+    );
+  }
+
   revalidatePath('/admin/offers');
   revalidatePath('/offers');
+  revalidatePath('/account');
 
   flashRedirect(
     '/admin/offers',
     'Offer accepted — 24 hour payment window started'
   );
 }
+
 
 export async function counterOffer(formData: FormData) {
   const adminUser = await ensureAdmin();
