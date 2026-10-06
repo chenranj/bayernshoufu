@@ -249,7 +249,7 @@ export default async function JerseysAdmin({
       String(nextLimit)
     );
 
-    return `/admin/jerseys?${params.toString()}#load-more`;
+return `/admin/jerseys?${params.toString()}`;
   }
 
   return (
@@ -1012,7 +1012,7 @@ export default async function JerseysAdmin({
 
       {/* ================================================================
           LOAD MORE
-      ================================================================ */}
+      ================================================  href={loadMoreHref()}================ */}
 
       <div
         id="load-more"
@@ -1027,7 +1027,7 @@ export default async function JerseysAdmin({
 
             <Link
               href={loadMoreHref()}
-              scroll={true}
+              scroll={false}
               className="btn-primary uppercase tracking-[0.2em] text-xs inline-flex items-center justify-center px-10 py-3"
             >
               Load More
