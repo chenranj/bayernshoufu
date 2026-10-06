@@ -28,6 +28,8 @@ type LinkedPlayer = {
   slug: string;
 };
 
+type UserRole = 'user' | 'viewer' | 'admin';
+
 export function JerseyModal({
   jersey,
   season,
@@ -35,6 +37,7 @@ export function JerseyModal({
   galleryImageIds,
   players,
   isFavorite,
+  userRole,
   onToggleFavorite,
   onClose,
 }: {
@@ -44,6 +47,7 @@ export function JerseyModal({
   galleryImageIds: string[];
   players: LinkedPlayer[];
   isFavorite: boolean;
+  userRole: UserRole | null;
   onToggleFavorite: () => void;
   onClose: () => void;
 }) {
@@ -354,13 +358,15 @@ export function JerseyModal({
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={openOfferModal}
-                    className="mt-5 w-full bg-bayern-red hover:bg-red-700 text-white px-4 py-3 text-xs font-semibold uppercase tracking-widest transition-colors"
-                  >
-                    Make an Offer
-                  </button>
+                  {userRole !== 'admin' && (
+                    <button
+                      type="button"
+                      onClick={openOfferModal}
+                      className="mt-5 w-full bg-bayern-red hover:bg-red-700 text-white px-4 py-3 text-xs font-semibold uppercase tracking-widest transition-colors"
+                    >
+                      Make an Offer
+                    </button>
+                  )}
                 </>
               ) : (
                 <>
@@ -424,7 +430,7 @@ export function JerseyModal({
       </div>
 
       {/* MAKE AN OFFER MODAL */}
-      {offerOpen && (
+      {offerOpen && userRole !== 'admin' && (
         <div
           className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center px-4"
           onClick={closeOfferModal}
