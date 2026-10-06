@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendBuyerCounterAdminEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
     const supabase = createClient();
 
-    // Check login
+    // 1. Check login
     const {
       data: { user },
       error: userError,
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Read request
+    // 2. Read request
     const body = await request.json();
 
     const offerId = String(body.offer_id || '').trim();
@@ -42,7 +43,46 @@ export async function POST(request: Request) {
     const normalizedAmount =
       Math.round(amount * 100) / 100;
 
-    // Secure database RPC:
+    // 3. Get jersey information before the RPC
+    // so we can use it in the admin notification email.
+    const { data: existingOffer, error: offerLookupError } =
+      await supabase
+        .from('offers')
+        .select('id, jersey_id')
+        .eq('id', offerId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (offerLookupError) {
+      console.error(
+        'Buyer counter offer lookup error:',
+        offerLookupError
+      );
+    }
+
+    let jerseyName = 'Jersey';
+
+    if (existingOffer?.jersey_id) {
+      const { data: jersey, error: jerseyError } =
+        await supabase
+          .from('jerseys')
+          .select('name')
+          .eq('id', existingOffer.jersey_id)
+          .maybeSingle();
+
+      if (jerseyError) {
+        console.error(
+          'Buyer counter jersey lookup error:',
+          jerseyError
+        );
+      }
+
+      if (jersey?.name) {
+        jerseyName = jersey.name;
+      }
+    }
+
+    // 4. Secure database RPC:
     // - verifies this offer belongs to the logged-in buyer
     // - only allows countering a seller "countered" offer
     // - changes status back to pending
@@ -98,6 +138,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // 5. Notify Admin.
+    // Email failure must not undo the buyer's counter offer.
+    try {
+      await sendBuyerCounterAdminEmail({
+        jerseyName,
+        amount: normalizedAmount,
+        buyerEmail: user.email ?? null,
+        message: message || null,
+      });
+    } catch (emailError) {
+      console.error(
+        'Buyer counter admin email failed:',
+        emailError
+      );
+    }
+
+    // 6. Success
     return NextResponse.json({
       success: true,
       offer: updatedOffer,
