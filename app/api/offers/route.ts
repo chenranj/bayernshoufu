@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendNewOfferAdminEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -63,7 +64,8 @@ export async function POST(request: Request) {
     }
 
     // 金额最多保留两位小数
-    const normalizedAmount = Math.round(amount * 100) / 100;
+    const normalizedAmount =
+      Math.round(amount * 100) / 100;
 
     // 4. 确认球衣存在，而且确实是 By Offer Only
     const { data: jersey, error: jerseyError } = await supabase
@@ -119,7 +121,10 @@ export async function POST(request: Request) {
       });
 
     if (messageError) {
-      console.error('Create offer message error:', messageError);
+      console.error(
+        'Create offer message error:',
+        messageError
+      );
 
       await supabase
         .from('offers')
@@ -132,7 +137,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. 成功
+    // 7. 通知 Admin
+    // 邮件发送失败不会影响 Offer 本身提交成功。
+    try {
+      await sendNewOfferAdminEmail({
+        jerseyName: jersey.name,
+        amount: normalizedAmount,
+        buyerEmail: user.email ?? null,
+        message: message || null,
+      });
+    } catch (emailError) {
+      console.error(
+        'New offer admin email failed:',
+        emailError
+      );
+    }
+
+    // 8. 成功
     return NextResponse.json({
       success: true,
       offer_id: offer.id,
