@@ -22,6 +22,7 @@ export type Jersey = {
   id: string;
   name: string;
   season_id: string;
+
   kit_type:
     | 'Wisen'
     | 'home'
@@ -31,6 +32,7 @@ export type Jersey = {
     | 'special'
     | 'training'
     | 'other';
+
   image_path: string;
   description: string | null;
   release_year: number | null;
@@ -40,6 +42,7 @@ export type Jersey = {
   // Sale information
   price: number | null;
   buyer_premium: number;
+  sale_type: 'fixed_price' | 'offer_only';
 };
 
 export type Competition = {
