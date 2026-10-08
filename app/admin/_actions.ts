@@ -871,9 +871,16 @@ export async function deleteJerseyImage(
 ) {
   await ensureAdmin();
 
-  const imageId = String(
-    formData.get('image_id')
+const imageId = String(
+  formData.get('image_id') ?? ''
+).trim();
+
+if (!imageId) {
+  flashError(
+    '/admin/jerseys',
+    'Missing image ID'
   );
+}
 
   const admin = createAdminClient();
 
