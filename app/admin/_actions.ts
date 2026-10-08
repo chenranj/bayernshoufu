@@ -867,20 +867,17 @@ export async function deleteJersey(formData: FormData) {
 }
 
 export async function deleteJerseyImage(
+  imageId: string,
   formData: FormData
 ) {
   await ensureAdmin();
 
-const imageId = String(
-  formData.get('image_id') ?? ''
-).trim();
-
-if (!imageId) {
-  flashError(
-    '/admin/jerseys',
-    'Missing image ID'
-  );
-}
+  if (!imageId) {
+    flashError(
+      '/admin/jerseys',
+      'Missing image ID'
+    );
+  }
 
   const admin = createAdminClient();
 
