@@ -34,6 +34,7 @@ type JerseysAdminProps = {
   searchParams?: {
     q?: string;
     visibility?: string;
+    sort?: string;
     limit?: string;
     saved?: string;
     error?: string;
@@ -61,6 +62,12 @@ export default async function JerseysAdmin({
   searchParams?.visibility === 'private'
     ? searchParams.visibility
     : '';
+
+  const sortSearch =
+  typeof searchParams?.sort === 'string' &&
+  /^\d+$/.test(searchParams.sort.trim())
+    ? Number(searchParams.sort.trim())
+    : null;
   
   // ===========================================================================
   // LOAD MORE
@@ -98,6 +105,13 @@ export default async function JerseysAdmin({
   jerseyQuery = jerseyQuery.eq(
     'visibility',
     visibilityFilter
+  );
+}
+
+  if (sortSearch !== null) {
+  jerseyQuery = jerseyQuery.eq(
+    'sort_order',
+    sortSearch
   );
 }
 
@@ -260,6 +274,10 @@ export default async function JerseysAdmin({
 
     if (visibilityFilter) {
   params.set('visibility', visibilityFilter);
+}
+
+    if (sortSearch !== null) {
+  params.set('sort', String(sortSearch));
 }
 
     params.set(
@@ -604,6 +622,22 @@ return `/admin/jerseys?${params.toString()}`;
     <option value="private">Private Only</option>
   </select>
 </div>
+
+        <div className="w-full md:w-32">
+  <label className="label">
+    Sort Search
+  </label>
+
+  <input
+    type="number"
+    name="sort"
+    min="0"
+    step="1"
+    defaultValue={sortSearch ?? ''}
+    className="input"
+    placeholder="e.g. 859"
+  />
+</div>  
           
           <button
             type="submit"
@@ -710,6 +744,12 @@ return `/admin/jerseys?${params.toString()}`;
                 type="hidden"
                 name="admin_visibility"
                 value={visibilityFilter}
+              />
+
+              <input
+              type="hidden"
+              name="admin_sort"
+              value={sortSearch ?? ''}
               />
 
               <div className="md:col-span-2">
