@@ -970,11 +970,7 @@ return `/admin/jerseys?${params.toString()}`;
 
                           <button
                             type="submit"
-                            formAction={
-                              deleteJerseyImage
-                            }
-                            name="image_id"
-                            value={g.id}
+                            formAction={deleteJerseyImage.bind(null, g.id)}
                             className="absolute top-1 right-1 bg-black/80 hover:bg-bayern-red text-white text-[10px] uppercase tracking-widest px-1.5 py-0.5"
                             title="Remove this photo"
                           >
