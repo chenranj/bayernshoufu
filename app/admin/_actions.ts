@@ -654,6 +654,10 @@ export async function updateJersey(formData: FormData) {
     formData.get('admin_query') || ''
   ).trim();
 
+  const adminVisibility = String(
+  formData.get('admin_visibility') || ''
+).trim();
+
   const name = String(formData.get('name') || '').trim();
   const seasonId = String(formData.get('season_id') || '');
 
@@ -807,6 +811,13 @@ params.set('saved', 'Saved');
 
 if (adminQuery) {
   params.set('q', adminQuery);
+}
+
+if (
+  adminVisibility === 'public' ||
+  adminVisibility === 'private'
+) {
+  params.set('visibility', adminVisibility);
 }
 
 redirect(
