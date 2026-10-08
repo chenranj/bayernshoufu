@@ -658,6 +658,10 @@ export async function updateJersey(formData: FormData) {
   formData.get('admin_visibility') || ''
 ).trim();
 
+  const adminSort = String(
+  formData.get('admin_sort') ?? ''
+).trim();
+
   const jerseyIndex = Math.max(
   0,
   Number(formData.get('jersey_index') ?? 0) || 0
@@ -818,6 +822,11 @@ if (adminQuery) {
   params.set('q', adminQuery);
 }
 
+  if (/^\d+$/.test(adminSort)) {
+  params.set('sort', adminSort);
+}
+  
+
 if (
   adminVisibility === 'public' ||
   adminVisibility === 'private'
@@ -825,18 +834,42 @@ if (
   params.set('visibility', adminVisibility);
 }
 
-  const leavesCurrentFilter =
+  const leavesVisibilityFilter =
   (adminVisibility === 'public' ||
     adminVisibility === 'private') &&
   visibility !== adminVisibility;
 
-  let targetJerseyId = id;
+const leavesSortSearch =
+  /^\d+$/.test(adminSort) &&
+  sortOrder !== Number(adminSort);
+
+const leavesNameSearch =
+  Boolean(adminQuery) &&
+  !name.toLowerCase().includes(
+    adminQuery.toLowerCase()
+  );
+
+const leavesCurrentFilter =
+  leavesVisibilityFilter ||
+  leavesSortSearch ||
+  leavesNameSearch;
+
+let targetJerseyId = id;
 
 if (leavesCurrentFilter) {
   let nextQuery = admin
     .from('jerseys')
-    .select('id')
-    .eq('visibility', adminVisibility);
+    .select('id');
+
+  if (
+    adminVisibility === 'public' ||
+    adminVisibility === 'private'
+  ) {
+    nextQuery = nextQuery.eq(
+      'visibility',
+      adminVisibility
+    );
+  }
 
   if (adminQuery) {
     nextQuery = nextQuery.ilike(
@@ -845,36 +878,58 @@ if (leavesCurrentFilter) {
     );
   }
 
+  if (/^\d+$/.test(adminSort)) {
+    nextQuery = nextQuery.eq(
+      'sort_order',
+      Number(adminSort)
+    );
+  }
+
   const { data: remainingJerseys, error: positionError } =
     await nextQuery
       .order('created_at', { ascending: false })
-  .range(jerseyIndex, jerseyIndex);
+      .range(jerseyIndex, jerseyIndex);
 
   if (!positionError && remainingJerseys?.length) {
-  targetJerseyId = remainingJerseys[0].id;
-} else if (!positionError && jerseyIndex > 0) {
+    targetJerseyId = remainingJerseys[0].id;
+  } else if (!positionError && jerseyIndex > 0) {
+    let previousQuery = admin
+      .from('jerseys')
+      .select('id');
 
-   let previousQuery = admin
-  .from('jerseys')
-  .select('id')
-  .eq('visibility', adminVisibility);
+    if (
+      adminVisibility === 'public' ||
+      adminVisibility === 'private'
+    ) {
+      previousQuery = previousQuery.eq(
+        'visibility',
+        adminVisibility
+      );
+    }
 
-if (adminQuery) {
-  previousQuery = previousQuery.ilike(
-    'name',
-    `%${adminQuery}%`
-  );
-}
+    if (adminQuery) {
+      previousQuery = previousQuery.ilike(
+        'name',
+        `%${adminQuery}%`
+      );
+    }
 
-const { data: previousJerseys } = await previousQuery
-  .order('created_at', { ascending: false })
-  .range(jerseyIndex - 1, jerseyIndex - 1);
+    if (/^\d+$/.test(adminSort)) {
+      previousQuery = previousQuery.eq(
+        'sort_order',
+        Number(adminSort)
+      );
+    }
 
-  if (previousJerseys?.length) {
-    targetJerseyId = previousJerseys[0].id;
+    const { data: previousJerseys } =
+      await previousQuery
+        .order('created_at', { ascending: false })
+        .range(jerseyIndex - 1, jerseyIndex - 1);
+
+    if (previousJerseys?.length) {
+      targetJerseyId = previousJerseys[0].id;
+    }
   }
-}
-  
 }
 
 redirect(
