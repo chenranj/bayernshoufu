@@ -33,6 +33,7 @@ const LOAD_SIZE = 20;
 type JerseysAdminProps = {
   searchParams?: {
     q?: string;
+    visibility?: string;
     limit?: string;
     saved?: string;
     error?: string;
@@ -55,6 +56,12 @@ export default async function JerseysAdmin({
       ? searchParams.q.trim()
       : '';
 
+  const visibilityFilter =
+  searchParams?.visibility === 'public' ||
+  searchParams?.visibility === 'private'
+    ? searchParams.visibility
+    : '';
+  
   // ===========================================================================
   // LOAD MORE
   // Default: 20
@@ -86,6 +93,13 @@ export default async function JerseysAdmin({
       `%${query}%`
     );
   }
+
+  if (visibilityFilter) {
+  jerseyQuery = jerseyQuery.eq(
+    'visibility',
+    visibilityFilter
+  );
+}
 
   const {
     data: jerseys,
@@ -243,6 +257,10 @@ export default async function JerseysAdmin({
     if (query) {
       params.set('q', query);
     }
+
+    if (visibilityFilter) {
+  params.set('visibility', visibilityFilter);
+}
 
     params.set(
       'limit',
@@ -571,6 +589,22 @@ return `/admin/jerseys?${params.toString()}`;
             />
           </div>
 
+          <div className="w-full md:w-52">
+  <label className="label">
+    Visibility Filter
+  </label>
+
+  <select
+    name="visibility"
+    defaultValue={visibilityFilter}
+    className="input"
+  >
+    <option value="">All Jerseys</option>
+    <option value="public">Public Only</option>
+    <option value="private">Private Only</option>
+  </select>
+</div>
+          
           <button
             type="submit"
             className="btn-primary uppercase tracking-widest text-xs px-6 h-[42px]"
@@ -664,6 +698,12 @@ return `/admin/jerseys?${params.toString()}`;
                 type="hidden"
                 name="id"
                 value={j.id}
+              />
+
+              <input
+                type="hidden"
+                name="admin_visibility"
+                value={visibilityFilter}
               />
 
               <div className="md:col-span-2">
