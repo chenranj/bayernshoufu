@@ -663,7 +663,7 @@ return `/admin/jerseys?${params.toString()}`;
       ================================================================ */}
 
       <div className="space-y-4">
-        {(jerseys ?? []).map((j) => {
+        {(jerseys ?? []).map((j, index) => {
           const linked = Array.from(
             linkMap.get(j.id) ??
               new Set<string>()
@@ -698,6 +698,12 @@ return `/admin/jerseys?${params.toString()}`;
                 type="hidden"
                 name="id"
                 value={j.id}
+              />
+
+              <input
+              type="hidden"
+              name="jersey_index"
+              value={index}
               />
 
               <input
