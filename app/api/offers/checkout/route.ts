@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
     const origin = request.nextUrl.origin;
 
     const session = await stripe.checkout.sessions.create({
+      locale: 'en',
       mode: 'payment',
       customer_email: user.email || undefined,
       client_reference_id: offer.id,
