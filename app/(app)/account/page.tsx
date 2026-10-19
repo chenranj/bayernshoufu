@@ -3,6 +3,7 @@ import { DeleteAccountForm } from '@/components/delete-account-form';
 import { AcceptCounterOfferButton } from '@/components/accept-counter-offer-button';
 import { BuyerCounterOfferForm } from '@/components/buyer-counter-offer-form';
 import { BuyerDeclineOfferButton } from '@/components/buyer-decline-offer-button';
+import { PayNowButton } from '@/components/pay-now-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -308,6 +309,7 @@ export default async function AccountPage() {
                             within the 24-hour payment
                             window.
                           </p>
+                          <PayNowButton offerId={offer.id} />
                         </>
                       )}
                     </div>
