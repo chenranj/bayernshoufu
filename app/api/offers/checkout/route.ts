@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       line_items: [
         {
           price_data: {
-            currency: 'cad',
+            currency: 'usd',
             product_data: {
               name: jersey.name,
               description: 'Accepted jersey offer',
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         },
         {
           price_data: {
-            currency: 'cad',
+            currency: 'usd',
             product_data: {
               name: `Buyer's Premium (${premiumPercent}%)`,
             },
