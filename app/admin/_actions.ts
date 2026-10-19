@@ -1493,22 +1493,31 @@ export async function acceptOffer(formData: FormData) {
   }
 
   // Accept the offer.
-  const { error: updateError } = await admin
-    .from('offers')
-    .update({
-      status: 'accepted',
-      accepted_amount: acceptedAmount,
-      payment_expires_at: paymentExpiresAt,
-    })
-    .eq('id', offerId)
-    .in('status', ['pending', 'countered']);
+  const { data: acceptedOffer, error: updateError } = await admin
+  .from('offers')
+  .update({
+    status: 'accepted',
+    accepted_amount: acceptedAmount,
+    payment_expires_at: paymentExpiresAt,
+  })
+  .eq('id', offerId)
+  .in('status', ['pending', 'countered'])
+  .select('id')
+  .maybeSingle();
 
-  if (updateError) {
-    flashError(
-      '/admin/offers',
-      updateError.message
-    );
-  }
+if (updateError) {
+  flashError(
+    '/admin/offers',
+    updateError.message
+  );
+}
+
+if (!acceptedOffer) {
+  flashError(
+    '/admin/offers',
+    'This offer is no longer available for acceptance'
+  );
+}
 
   // Add acceptance to offer history.
   const { error: messageError } = await admin
