@@ -9,6 +9,9 @@ import { getStripe } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 
+const RESERVATION_MINUTES = 35;
+const CHECKOUT_MINUTES = 30;
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
       amountCents * premiumPercent / 100
     );
 
-    // Create an unpaid order before starting Stripe Checkout.
+    // 1. Create a pending BUY NOW order.
     const { data: order, error: orderError } = await admin
       .from('offers')
       .insert({
@@ -133,6 +136,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unable to create your order.' },
         { status: 500 }
+      );
+    }
+
+    // 2. Atomically reserve the jersey in Supabase.
+    const { data: reserved, error: reserveError } = await admin.rpc(
+      'reserve_jersey_for_checkout',
+      {
+        p_jersey_id: jersey.id,
+        p_order_id: order.id,
+        p_reservation_minutes: RESERVATION_MINUTES,
+      }
+    );
+
+    if (reserveError || reserved !== true) {
+      console.error('[Buy Now] Reservation failed:', reserveError);
+
+      await admin
+        .from('offers')
+        .delete()
+        .eq('id', order.id)
+        .eq('status', 'checkout_pending');
+
+      return NextResponse.json(
+        {
+          error: reserveError
+            ? 'Unable to reserve this jersey. Please try again.'
+            : 'This jersey is currently reserved by another buyer. Please try again later.',
+        },
+        { status: reserveError ? 500 : 409 }
       );
     }
 
@@ -165,65 +197,89 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const origin = request.nextUrl.origin;
 
+    // Stripe Checkout expires after 30 minutes.
+    // Supabase reservation lasts 35 minutes.
+    const expiresAt = Math.floor(Date.now() / 1000) +
+      CHECKOUT_MINUTES * 60;
+
     let session: Stripe.Checkout.Session;
 
     try {
-      session = await stripe.checkout.sessions.create({
-        locale: 'en',
-        mode: 'payment',
-        customer_email: user.email || undefined,
-        client_reference_id: order.id,
-        line_items: lineItems,
+      // 3. Create Stripe Checkout only after reservation succeeds.
+      session = await stripe.checkout.sessions.create(
+        {
+          locale: 'en',
+          mode: 'payment',
+          customer_email: user.email || undefined,
+          client_reference_id: order.id,
+          line_items: lineItems,
+          expires_at: expiresAt,
 
-        metadata: {
-          purchase_type: 'fixed_price',
-          offer_id: order.id,
-          jersey_id: jersey.id,
-          user_id: user.id,
+          metadata: {
+            purchase_type: 'fixed_price',
+            offer_id: order.id,
+            jersey_id: jersey.id,
+            user_id: user.id,
+          },
+
+          success_url: `${origin}/account?payment=success`,
+          cancel_url: `${origin}/account?payment=cancelled`,
         },
-
-        success_url: `${origin}/account?payment=success`,
-        cancel_url: `${origin}/account?payment=cancelled`,
-      });
-    } catch (stripeError) {
-      console.error('[Buy Now] Stripe error:', stripeError);
-
-      // Remove the unpaid order if Checkout could not be created.
-      await admin
-        .from('offers')
-        .delete()
-        .eq('id', order.id)
-        .eq('status', 'checkout_pending');
-
-      return NextResponse.json(
-        { error: 'Unable to start payment. Please try again.' },
-        { status: 500 }
+        {
+          idempotencyKey: `buy-now-${order.id}`,
+        }
       );
-    }
+   } catch (stripeError) {
+  console.error('[Buy Now] Stripe error:', stripeError);
+
+  // Keep the reservation until it expires.
+  // Stripe may have created a Checkout Session
+  // even if the API response failed.
+  return NextResponse.json(
+    {
+      error:
+        'Unable to confirm payment setup. This jersey is temporarily reserved. Please try again later.',
+    },
+    { status: 500 }
+  );
+}
 
     if (!session.url) {
+      try {
+        if (session.status === 'open') {
+          await stripe.checkout.sessions.expire(session.id);
+        }
+      } catch (expireError) {
+        console.error('[Buy Now] Session expiration failed:', expireError);
+      }
+
       return NextResponse.json(
         { error: 'Stripe did not return a checkout URL.' },
         { status: 500 }
       );
     }
 
-    const { error: sessionError } = await admin
+    // 4. Save the Stripe Session ID on the pending order.
+    const { data: savedOrder, error: sessionError } = await admin
       .from('offers')
       .update({
         stripe_checkout_session_id: session.id,
       })
       .eq('id', order.id)
-      .eq('status', 'checkout_pending');
+      .eq('status', 'checkout_pending')
+      .select('id')
+      .maybeSingle();
 
-    if (sessionError) {
+    if (sessionError || !savedOrder) {
       console.error(
         '[Buy Now] Unable to save Stripe session:',
         sessionError
       );
 
       try {
-        await stripe.checkout.sessions.expire(session.id);
+        if (session.status === 'open') {
+          await stripe.checkout.sessions.expire(session.id);
+        }
       } catch (expireError) {
         console.error(
           '[Buy Now] Unable to expire Stripe session:',
