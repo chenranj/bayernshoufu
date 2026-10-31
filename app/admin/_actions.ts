@@ -8,6 +8,7 @@ import {
   sendOfferCounterEmail,
   sendOfferAcceptedEmail,
   sendOfferDeclinedEmail,
+  sendShippingConfirmationEmail,
 } from '@/lib/email';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
@@ -1887,24 +1888,14 @@ export async function declineOffer(formData: FormData) {
  // SHIPPING TRACKING
  // =============================================================================
 
+
 export async function saveTrackingInfo(formData: FormData) {
   await ensureAdmin();
 
-  const offerId = String(
-    formData.get('offer_id') || ''
-  ).trim();
-
-  const carrier = String(
-    formData.get('shipping_carrier') || ''
-  ).trim();
-
-  const trackingNumber = String(
-    formData.get('tracking_number') || ''
-  ).trim();
-
-  const trackingUrl = String(
-    formData.get('tracking_url') || ''
-  ).trim();
+  const offerId = String(formData.get('offer_id') || '').trim();
+  const carrier = String(formData.get('shipping_carrier') || '').trim();
+  const trackingNumber = String(formData.get('tracking_number') || '').trim();
+  const trackingUrl = String(formData.get('tracking_url') || '').trim();
 
   if (!offerId) {
     flashError('/admin/offers', 'Offer ID required');
@@ -1922,30 +1913,22 @@ export async function saveTrackingInfo(formData: FormData) {
     trackingNumber.length > 200 ||
     trackingUrl.length > 2000
   ) {
-    flashError(
-      '/admin/offers',
-      'Shipping information is too long'
-    );
+    flashError('/admin/offers', 'Shipping information is too long');
   }
 
   if (trackingUrl) {
+    let validUrl = false;
+
     try {
       const url = new URL(trackingUrl);
-
-      if (
-        url.protocol !== 'https:' &&
-        url.protocol !== 'http:'
-      ) {
-        flashError(
-          '/admin/offers',
-          'Tracking URL must use HTTPS or HTTP'
-        );
-      }
+      validUrl =
+        url.protocol === 'https:' || url.protocol === 'http:';
     } catch {
-      flashError(
-        '/admin/offers',
-        'Invalid tracking URL'
-      );
+      validUrl = false;
+    }
+
+    if (!validUrl) {
+      flashError('/admin/offers', 'Invalid tracking URL');
     }
   }
 
@@ -1953,7 +1936,7 @@ export async function saveTrackingInfo(formData: FormData) {
 
   const { data: offer, error: offerError } = await admin
     .from('offers')
-    .select('id, status, shipped_at')
+    .select('id, user_id, jersey_id, status, shipped_at')
     .eq('id', offerId)
     .maybeSingle();
 
@@ -1964,33 +1947,28 @@ export async function saveTrackingInfo(formData: FormData) {
     );
   }
 
-if (offer!.status !== 'paid') {
+  if (offer!.status !== 'paid') {
     flashError(
       '/admin/offers',
       'Only paid offers can be shipped'
     );
   }
 
-  const { data: updatedOffer, error: updateError } =
-    await admin
-      .from('offers')
-      .update({
-        shipping_carrier: carrier,
-        tracking_number: trackingNumber,
-        tracking_url: trackingUrl || null,
-        shipped_at:
-          offer!.shipped_at ?? new Date().toISOString(),
-      })
-      .eq('id', offerId)
-      .eq('status', 'paid')
-      .select('id')
-      .maybeSingle();
+  const { data: updatedOffer, error: updateError } = await admin
+    .from('offers')
+    .update({
+      shipping_carrier: carrier,
+      tracking_number: trackingNumber,
+      tracking_url: trackingUrl || null,
+      shipped_at: offer!.shipped_at ?? new Date().toISOString(),
+    })
+    .eq('id', offerId)
+    .eq('status', 'paid')
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
-    flashError(
-      '/admin/offers',
-      updateError.message
-    );
+    flashError('/admin/offers', updateError.message);
   }
 
   if (!updatedOffer) {
@@ -1998,6 +1976,61 @@ if (offer!.status !== 'paid') {
       '/admin/offers',
       'Offer is no longer eligible for shipping'
     );
+  }
+
+  // Claim the first shipping notification only once.
+  const { data: claimed, error: claimError } = await admin.rpc(
+    'claim_shipping_notification',
+    { p_offer_id: offerId }
+  );
+
+  if (claimError) {
+    console.error(
+      '[saveTrackingInfo] Notification claim failed',
+      claimError
+    );
+  } else if (claimed) {
+    try {
+      const [profileResult, jerseyResult] = await Promise.all([
+        admin
+          .from('profiles')
+          .select('email')
+          .eq('id', offer!.user_id)
+          .maybeSingle(),
+        admin
+          .from('jerseys')
+          .select('name')
+          .eq('id', offer!.jersey_id)
+          .maybeSingle(),
+      ]);
+
+      const buyerEmail = profileResult.data?.email;
+
+      if (buyerEmail) {
+        const sent = await sendShippingConfirmationEmail({
+          to: buyerEmail,
+          jerseyName: jerseyResult.data?.name ?? 'Jersey',
+          carrier,
+          trackingNumber,
+          trackingUrl: trackingUrl || null,
+        });
+
+        if (!sent) {
+          console.error(
+            '[saveTrackingInfo] Shipping email failed'
+          );
+        }
+      } else {
+        console.error(
+          '[saveTrackingInfo] Buyer email not found'
+        );
+      }
+    } catch (error) {
+      console.error(
+        '[saveTrackingInfo] Shipping email error',
+        error
+      );
+    }
   }
 
   revalidatePath('/admin/offers');
@@ -2008,4 +2041,3 @@ if (offer!.status !== 'paid') {
     'Tracking information saved'
   );
 }
-
