@@ -1881,3 +1881,131 @@ export async function declineOffer(formData: FormData) {
     'Offer declined'
   );
 }
+
+
+ // =============================================================================
+ // SHIPPING TRACKING
+ // =============================================================================
+
+export async function saveTrackingInfo(formData: FormData) {
+  await ensureAdmin();
+
+  const offerId = String(
+    formData.get('offer_id') || ''
+  ).trim();
+
+  const carrier = String(
+    formData.get('shipping_carrier') || ''
+  ).trim();
+
+  const trackingNumber = String(
+    formData.get('tracking_number') || ''
+  ).trim();
+
+  const trackingUrl = String(
+    formData.get('tracking_url') || ''
+  ).trim();
+
+  if (!offerId) {
+    flashError('/admin/offers', 'Offer ID required');
+  }
+
+  if (!carrier || !trackingNumber) {
+    flashError(
+      '/admin/offers',
+      'Shipping carrier and tracking number are required'
+    );
+  }
+
+  if (
+    carrier.length > 100 ||
+    trackingNumber.length > 200 ||
+    trackingUrl.length > 2000
+  ) {
+    flashError(
+      '/admin/offers',
+      'Shipping information is too long'
+    );
+  }
+
+  if (trackingUrl) {
+    try {
+      const url = new URL(trackingUrl);
+
+      if (
+        url.protocol !== 'https:' &&
+        url.protocol !== 'http:'
+      ) {
+        flashError(
+          '/admin/offers',
+          'Tracking URL must use HTTPS or HTTP'
+        );
+      }
+    } catch {
+      flashError(
+        '/admin/offers',
+        'Invalid tracking URL'
+      );
+    }
+  }
+
+  const admin = createAdminClient();
+
+  const { data: offer, error: offerError } = await admin
+    .from('offers')
+    .select('id, status, shipped_at')
+    .eq('id', offerId)
+    .maybeSingle();
+
+  if (offerError || !offer) {
+    flashError(
+      '/admin/offers',
+      offerError?.message ?? 'Offer not found'
+    );
+  }
+
+  if (offer.status !== 'paid') {
+    flashError(
+      '/admin/offers',
+      'Only paid offers can be shipped'
+    );
+  }
+
+  const { data: updatedOffer, error: updateError } =
+    await admin
+      .from('offers')
+      .update({
+        shipping_carrier: carrier,
+        tracking_number: trackingNumber,
+        tracking_url: trackingUrl || null,
+        shipped_at:
+          offer.shipped_at ?? new Date().toISOString(),
+      })
+      .eq('id', offerId)
+      .eq('status', 'paid')
+      .select('id')
+      .maybeSingle();
+
+  if (updateError) {
+    flashError(
+      '/admin/offers',
+      updateError.message
+    );
+  }
+
+  if (!updatedOffer) {
+    flashError(
+      '/admin/offers',
+      'Offer is no longer eligible for shipping'
+    );
+  }
+
+  revalidatePath('/admin/offers');
+  revalidatePath('/account');
+
+  flashRedirect(
+    '/admin/offers',
+    'Tracking information saved'
+  );
+}
+
