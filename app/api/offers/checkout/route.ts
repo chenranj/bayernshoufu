@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     const { data: jersey } = await admin
       .from('jerseys')
-      .select('name, buyer_premium')
+      .select('name, buyer_premium, is_sold')
       .eq('id', offer.jersey_id)
       .single();
 
@@ -78,6 +78,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+        // Prevent checkout for an already sold jersey.
+    if (jersey.is_sold) {
+      return NextResponse.json(
+        { error: 'This jersey has already been sold.' },
+        { status: 409 }
+      );
+    }
     const acceptedAmount = Number(offer.accepted_amount);
     const premiumPercent = Number(jersey.buyer_premium ?? 10);
 
