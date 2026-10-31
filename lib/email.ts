@@ -1932,12 +1932,14 @@ type SendPaymentReceivedAdminEmailParams = {
   jerseyName: string;
   amount: number;
   buyerEmail?: string | null;
+  purchaseType?: 'offer' | 'fixed_price';
 };
 
 export async function sendPaymentReceivedAdminEmail({
   jerseyName,
   amount,
   buyerEmail,
+  purchaseType = 'offer',
 }: SendPaymentReceivedAdminEmailParams): Promise<boolean> {
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
 
@@ -1955,7 +1957,7 @@ export async function sendPaymentReceivedAdminEmail({
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: adminEmail,
-      subject: `Payment received — ${formattedAmount}`,
+      subject: `${purchaseType === 'fixed_price' ? 'BUY NOW payment received' : 'Offer payment received'} — ${formattedAmount}`,
       html: `
         <!doctype html>
         <html>
@@ -2049,9 +2051,9 @@ export async function sendPaymentReceivedAdminEmail({
                             color:#777777;
                             margin-bottom:8px;
                           ">
-                            ACCEPTED OFFER AMOUNT
+                            
                           </div>
-
+                          ${purchaseType === 'fixed_price' ? 'PURCHASE AMOUNT' : 'ACCEPTED OFFER AMOUNT'}
                           <div style="
                             font-size:30px;
                             font-weight:700;
@@ -2097,7 +2099,7 @@ export async function sendPaymentReceivedAdminEmail({
                             letter-spacing:1.2px;
                           "
                         >
-                          VIEW PAID OFFER
+                          ${purchaseType === 'fixed_price' ? 'VIEW PAID ORDER' : 'VIEW PAID OFFER'}
                         </a>
                       </td>
                     </tr>
