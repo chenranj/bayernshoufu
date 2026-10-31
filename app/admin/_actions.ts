@@ -1964,7 +1964,7 @@ export async function saveTrackingInfo(formData: FormData) {
     );
   }
 
-  if (offer.status !== 'paid') {
+if (offer!.status !== 'paid') {
     flashError(
       '/admin/offers',
       'Only paid offers can be shipped'
