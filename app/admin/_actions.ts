@@ -1979,7 +1979,7 @@ if (offer!.status !== 'paid') {
         tracking_number: trackingNumber,
         tracking_url: trackingUrl || null,
         shipped_at:
-          offer.shipped_at ?? new Date().toISOString(),
+          offer!.shipped_at ?? new Date().toISOString(),
       })
       .eq('id', offerId)
       .eq('status', 'paid')
