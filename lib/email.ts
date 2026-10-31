@@ -5,9 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL =
   'SHOUFU JERSEY <noreply@shoufujersey.com>';
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  'https://bayernshoufu.com';
+const SITE_URL = 'https://www.shoufujersey.com';
 
 // =============================================================================
 // BUYER: SELLER COUNTER OFFER EMAIL
