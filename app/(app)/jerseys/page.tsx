@@ -127,6 +127,7 @@ export default async function JerseysPage({
     .select(
       'id, name, season_id, competition_id, kit_type, image_path, description, release_year, sort_order, price, buyer_premium, sale_type'
     )
+    .eq('is_sold', false)
     .order('sort_order', { ascending: true })
     .order('release_year', { ascending: false });
 
