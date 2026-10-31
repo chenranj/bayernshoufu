@@ -92,7 +92,7 @@ export default async function JerseysAdmin({
 
   let jerseyQuery = admin
     .from('jerseys')
-    .select('*', { count: 'exact' });
+    .select('*', { count: 'exact' })
     .eq('is_sold', false);
   
   if (query) {
