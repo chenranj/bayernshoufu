@@ -2347,6 +2347,228 @@ export async function sendShippingReminderAdminEmail({
 }
 
 
+ // =============================================================================
+ // BUYER: SHIPPING CONFIRMATION EMAIL
+ // =============================================================================
+
+type SendShippingConfirmationEmailParams = {
+  to: string;
+  jerseyName: string;
+  carrier: string;
+  trackingNumber: string;
+  trackingUrl?: string | null;
+};
+
+export async function sendShippingConfirmationEmail({
+  to,
+  jerseyName,
+  carrier,
+  trackingNumber,
+  trackingUrl,
+}: SendShippingConfirmationEmailParams): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.error(
+      '[sendShippingConfirmationEmail] RESEND_API_KEY is missing'
+    );
+    return false;
+  }
+
+  const accountUrl = `${SITE_URL}/account`;
+
+  const safeTrackingUrl =
+    trackingUrl &&
+    /^https?:\/\//i.test(trackingUrl)
+      ? trackingUrl
+      : null;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `Your jersey has shipped — ${jerseyName}`,
+      html: `
+        <!doctype html>
+        <html>
+          <body style="
+            margin:0;
+            padding:0;
+            background:#f5f5f5;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#111111;
+          ">
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="background:#f5f5f5;padding:40px 16px;"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      max-width:600px;
+                      background:#ffffff;
+                      border:1px solid #e5e5e5;
+                    "
+                  >
+                    <tr>
+                      <td style="padding:36px 36px 20px;">
+                        <div style="
+                          font-size:22px;
+                          font-weight:700;
+                          letter-spacing:1px;
+                        ">
+                          SHOUFU JERSEY®
+                        </div>
+
+                        <div style="
+                          margin-top:6px;
+                          font-size:11px;
+                          letter-spacing:2px;
+                          color:#777777;
+                        ">
+                          PRIVATE ARCHIVE • EST. 2021
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style="padding:12px 36px 36px;">
+                        <div style="
+                          font-size:12px;
+                          letter-spacing:1.5px;
+                          color:#777777;
+                          margin-bottom:12px;
+                        ">
+                          SHIPPING CONFIRMATION
+                        </div>
+
+                        <h1 style="
+                          margin:0 0 20px;
+                          font-size:28px;
+                          line-height:1.2;
+                        ">
+                          Your jersey is on its way.
+                        </h1>
+
+                        <p style="
+                          font-size:15px;
+                          line-height:1.7;
+                          color:#444444;
+                        ">
+                          Great news! Your jersey
+                          <strong>${escapeHtml(jerseyName)}</strong>
+                          has been shipped.
+                        </p>
+
+                        <div style="
+                          background:#f7f7f7;
+                          padding:20px;
+                          margin:24px 0;
+                          font-size:14px;
+                          line-height:1.9;
+                        ">
+                          <strong>Shipping Carrier:</strong>
+                          ${escapeHtml(carrier)}
+                          <br />
+                          <strong>Tracking Number:</strong>
+                          ${escapeHtml(trackingNumber)}
+                        </div>
+
+                        ${
+                          safeTrackingUrl
+                            ? `
+                              <a
+                                href="${escapeHtml(safeTrackingUrl)}"
+                                style="
+                                  display:inline-block;
+                                  background:#111111;
+                                  color:#ffffff;
+                                  text-decoration:none;
+                                  padding:14px 24px;
+                                  font-size:12px;
+                                  font-weight:700;
+                                  letter-spacing:1.2px;
+                                  margin-bottom:16px;
+                                "
+                              >
+                                TRACK YOUR PACKAGE
+                              </a>
+                            `
+                            : ''
+                        }
+
+                        <p style="
+                          margin:20px 0;
+                          font-size:14px;
+                          line-height:1.7;
+                          color:#555555;
+                        ">
+                          You can also review your shipping details
+                          in your SHOUFU JERSEY account.
+                        </p>
+
+                        <a
+                          href="${accountUrl}"
+                          style="
+                            display:inline-block;
+                            color:#111111;
+                            font-size:12px;
+                            font-weight:700;
+                            letter-spacing:1.2px;
+                          "
+                        >
+                          VIEW MY ACCOUNT
+                        </a>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style="
+                        border-top:1px solid #eeeeee;
+                        padding:24px 36px;
+                        font-size:11px;
+                        color:#888888;
+                      ">
+                        SHOUFU JERSEY®
+                        <br />
+                        Shipping notification for your purchase.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error(
+        '[sendShippingConfirmationEmail] Resend error',
+        error
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      '[sendShippingConfirmationEmail] Unexpected error',
+      error
+    );
+    return false;
+  }
+}
+
 // =============================================================================
 // HELPERS
 // =============================================================================
