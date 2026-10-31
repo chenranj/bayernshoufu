@@ -9,6 +9,7 @@ import {
   Calendar,
   Star,
   Shirt,
+  Archive,
   Image as ImageIcon,
   Trophy,
   HandCoins,
@@ -50,6 +51,11 @@ const ITEMS = [
     href: '/admin/jerseys',
     label: 'Jerseys',
     icon: Shirt,
+  },
+  {
+    href: '/admin/archive',
+    label: 'Sold Archive',
+    icon: Archive,
   },
   {
     href: '/admin/banners',
