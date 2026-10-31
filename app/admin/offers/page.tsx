@@ -13,6 +13,7 @@ type OfferRow = {
   id: string;
   jersey_id: string;
   user_id: string;
+  purchase_type: 'offer' | 'fixed_price';
   initial_amount: number;
   current_amount: number;
   status: string;
@@ -185,8 +186,9 @@ export default async function OffersAdmin() {
             );
 
             const canManage =
-              offer.status === 'pending' ||
-              offer.status === 'countered';
+            offer.purchase_type === 'offer' &&
+            (offer.status === 'pending' ||
+              offer.status === 'countered');
 
             return (
               <div
@@ -195,6 +197,19 @@ export default async function OffersAdmin() {
               >
                 {/* HEADER */}
                 <div className="p-5 border-b border-bayern-border">
+                  <div className="mb-4">
+  <span
+    className={`inline-flex border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest ${
+      offer.purchase_type === 'fixed_price'
+        ? 'border-blue-500/50 bg-blue-500/10 text-blue-300'
+        : 'border-bayern-red/50 bg-bayern-red/10 text-white'
+    }`}
+  >
+    {offer.purchase_type === 'fixed_price'
+      ? 'BUY NOW'
+      : 'OFFER'}
+  </span>
+</div>
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div>
                       <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
@@ -206,7 +221,9 @@ export default async function OffersAdmin() {
                       </h2>
 
                       <p className="mt-2 text-xs text-bayern-muted">
-                        Offer ID:{' '}
+                        {offer.purchase_type === 'fixed_price'
+  ? 'Order ID: '
+  : 'Offer ID: '}
                         <span className="font-mono">
                           {offer.id}
                         </span>
@@ -227,7 +244,9 @@ export default async function OffersAdmin() {
                 <div className="grid grid-cols-1 md:grid-cols-4 border-b border-bayern-border">
                   <div className="p-4 md:border-r border-bayern-border">
                     <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-1">
-                      Current Offer
+                      {offer.purchase_type === 'fixed_price'
+  ? 'Purchase Price'
+  : 'Current Offer'}
                     </p>
 
                     <p className="text-xl font-semibold">
@@ -507,6 +526,7 @@ export default async function OffersAdmin() {
 
                 
                 {/* OFFER HISTORY */}
+              {offer.purchase_type === 'offer' && (
                 <div className="p-5 border-b border-bayern-border">
                   <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-3">
                     Offer History
@@ -568,6 +588,7 @@ export default async function OffersAdmin() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* ADMIN ACTIONS */}
                 <div className="p-5">
@@ -728,11 +749,14 @@ export default async function OffersAdmin() {
 
                         {offer.status === 'paid' &&
                           'Payment Completed'}
+                        {offer.status === 'checkout_pending' &&
+                          'Awaiting Checkout Payment'}
                       </p>
 
                       <p className="mt-2 text-xs text-bayern-muted">
-                        No further admin action is available for
-                        this offer.
+                        {offer.purchase_type === 'fixed_price'
+                        ? 'Manage shipping above once payment is completed.'
+                        : 'No further admin action is available for this offer.'}
                       </p>
                     </div>
                   )}
