@@ -4,6 +4,7 @@ import { AcceptCounterOfferButton } from '@/components/accept-counter-offer-butt
 import { BuyerCounterOfferForm } from '@/components/buyer-counter-offer-form';
 import { BuyerDeclineOfferButton } from '@/components/buyer-decline-offer-button';
 import { PayNowButton } from '@/components/pay-now-button';
+import { remindSellerToShip } from './_actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export default async function AccountPage() {
   const { data: offers } = await supabase
     .from('offers')
     .select(
-  'id, jersey_id, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at, shipping_carrier, tracking_number, tracking_url, shipped_at'
+  'id, jersey_id, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at, shipping_carrier, tracking_number, tracking_url, shipped_at, shipping_reminder_sent_at'
 )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
@@ -375,6 +376,29 @@ export default async function AccountPage() {
         <p className="mt-2 text-xs text-bayern-muted">
           Payment received. Awaiting shipment and tracking information from the seller.
         </p>
+        {(!offer.shipping_reminder_sent_at ||
+  Date.now() -
+    new Date(offer.shipping_reminder_sent_at).getTime() >=
+      24 * 60 * 60 * 1000) ? (
+  <form action={remindSellerToShip} className="mt-4">
+    <input
+      type="hidden"
+      name="offer_id"
+      value={offer.id}
+    />
+
+    <button
+      type="submit"
+      className="border border-yellow-500/50 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-yellow-400 hover:bg-yellow-500/10"
+    >
+      REMIND SELLER TO SHIP
+    </button>
+  </form>
+) : (
+  <p className="mt-4 text-xs text-bayern-muted">
+    Shipping reminder sent. You can send another reminder after 24 hours.
+  </p>
+)}
       </div>
     )}
   </div>
