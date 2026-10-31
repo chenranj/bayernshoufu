@@ -34,8 +34,8 @@ export default async function AccountPage() {
   const { data: offers } = await supabase
     .from('offers')
     .select(
-      'id, jersey_id, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at'
-    )
+  'id, jersey_id, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at, shipping_carrier, tracking_number, tracking_url, shipped_at'
+)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -314,6 +314,71 @@ export default async function AccountPage() {
                       )}
                     </div>
                   )}
+
+                  
+{/* SHIPPING STATUS */}
+{offer.status === 'paid' && (
+  <div className="p-5 border-b border-bayern-border">
+    <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-3">
+      Shipping Status
+    </p>
+
+    {offer.shipped_at ? (
+      <div className="border border-green-500/30 bg-green-500/5 p-4">
+        <p className="text-sm font-semibold uppercase tracking-widest text-green-400">
+          SHIPPED
+        </p>
+
+        <p className="mt-2 text-xs text-bayern-muted">
+          Your jersey has been shipped.
+        </p>
+
+        <div className="mt-4 space-y-3 text-sm">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+              Shipping Carrier
+            </p>
+
+            <p className="mt-1 font-semibold">
+              {offer.shipping_carrier || '—'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+              Tracking Number
+            </p>
+
+            <p className="mt-1 font-mono break-all">
+              {offer.tracking_number || '—'}
+            </p>
+          </div>
+
+          {offer.tracking_url && (
+            <a
+              href={offer.tracking_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block border border-green-500/50 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-green-400 hover:bg-green-500/10"
+            >
+              Track Package ↗
+            </a>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div className="border border-yellow-500/30 bg-yellow-500/5 p-4">
+        <p className="text-sm font-semibold uppercase tracking-widest text-yellow-400">
+          PROCESSING
+        </p>
+
+        <p className="mt-2 text-xs text-bayern-muted">
+          Payment received. Awaiting shipment and tracking information from the seller.
+        </p>
+      </div>
+    )}
+  </div>
+)}
 
                   {/* OFFER HISTORY */}
                   <div className="p-5">
