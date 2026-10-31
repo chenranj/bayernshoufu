@@ -2140,6 +2140,213 @@ export async function sendPaymentReceivedAdminEmail({
     return false;
   }
 }
+
+
+ // =============================================================================
+ // ADMIN: SHIPPING REMINDER EMAIL
+ // =============================================================================
+
+type SendShippingReminderAdminEmailParams = {
+  jerseyName: string;
+  offerId: string;
+  buyerEmail?: string | null;
+};
+
+export async function sendShippingReminderAdminEmail({
+  jerseyName,
+  offerId,
+  buyerEmail,
+}: SendShippingReminderAdminEmailParams): Promise<boolean> {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+
+  if (!process.env.RESEND_API_KEY || !adminEmail) {
+    console.error(
+      '[sendShippingReminderAdminEmail] Email configuration missing'
+    );
+    return false;
+  }
+
+  const adminOffersUrl = `${SITE_URL}/admin/offers`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `Shipping reminder — ${jerseyName}`,
+      html: `
+        <!doctype html>
+        <html>
+          <body style="
+            margin:0;
+            padding:0;
+            background:#f5f5f5;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#111111;
+          ">
+            <table
+              role="presentation"
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="background:#f5f5f5;padding:40px 16px;"
+            >
+              <tr>
+                <td align="center">
+                  <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      max-width:600px;
+                      background:#ffffff;
+                      border:1px solid #e5e5e5;
+                    "
+                  >
+                    <tr>
+                      <td style="padding:36px 36px 20px;">
+                        <div style="
+                          font-size:22px;
+                          font-weight:700;
+                          letter-spacing:1px;
+                        ">
+                          SHOUFU JERSEY®
+                        </div>
+
+                        <div style="
+                          margin-top:6px;
+                          font-size:11px;
+                          letter-spacing:2px;
+                          color:#777777;
+                        ">
+                          PRIVATE ARCHIVE • EST. 2021
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style="padding:12px 36px 36px;">
+                        <div style="
+                          font-size:12px;
+                          letter-spacing:1.5px;
+                          color:#777777;
+                          margin-bottom:12px;
+                        ">
+                          SHIPPING REMINDER
+                        </div>
+
+                        <h1 style="
+                          margin:0 0 20px;
+                          font-size:28px;
+                          line-height:1.2;
+                        ">
+                          A buyer is waiting for shipment.
+                        </h1>
+
+                        <p style="
+                          font-size:15px;
+                          line-height:1.7;
+                          color:#444444;
+                        ">
+                          A buyer has requested a shipping update
+                          for <strong>${escapeHtml(jerseyName)}</strong>.
+                        </p>
+
+                        <div style="
+                          background:#f7f7f7;
+                          padding:18px;
+                          margin:24px 0;
+                          font-size:14px;
+                          line-height:1.8;
+                        ">
+                          <strong>Payment status:</strong> PAID
+                          <br />
+                          <strong>Shipping status:</strong> PROCESSING
+                          <br />
+                          <strong>Offer ID:</strong>
+                          ${escapeHtml(offerId)}
+                          ${
+                            buyerEmail
+                              ? `
+                                <br />
+                                <strong>Buyer:</strong>
+                                ${escapeHtml(buyerEmail)}
+                              `
+                              : ''
+                          }
+                        </div>
+
+                        <p style="
+                          margin:20px 0 26px;
+                          font-size:14px;
+                          line-height:1.7;
+                          color:#555555;
+                        ">
+                          Please prepare the jersey for shipment
+                          and add the tracking information in
+                          Admin Offers.
+                        </p>
+
+                        <a
+                          href="${adminOffersUrl}"
+                          style="
+                            display:inline-block;
+                            background:#111111;
+                            color:#ffffff;
+                            text-decoration:none;
+                            padding:14px 24px;
+                            font-size:12px;
+                            font-weight:700;
+                            letter-spacing:1.2px;
+                          "
+                        >
+                          MANAGE SHIPPING
+                        </a>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td style="
+                        border-top:1px solid #eeeeee;
+                        padding:24px 36px;
+                        font-size:11px;
+                        color:#888888;
+                      ">
+                        SHOUFU JERSEY®
+                        <br />
+                        Buyer shipping reminder notification.
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error(
+        '[sendShippingReminderAdminEmail] Resend error',
+        error
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(
+      '[sendShippingReminderAdminEmail] Unexpected error',
+      error
+    );
+    return false;
+  }
+}
+
+
 // =============================================================================
 // HELPERS
 // =============================================================================
