@@ -55,9 +55,60 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (event.type !== 'checkout.session.completed') {
-    return NextResponse.json({ received: true });
+
+if (event.type === 'checkout.session.expired') {
+  const session = event.data.object as Stripe.Checkout.Session;
+
+  if (session.metadata?.purchase_type === 'fixed_price') {
+    const orderId = session.metadata?.offer_id;
+
+    if (!orderId || session.client_reference_id !== orderId) {
+      console.error(
+        '[Stripe Webhook] Invalid expired checkout:',
+        session.id
+      );
+
+      return NextResponse.json(
+        { error: 'Invalid expired checkout.' },
+        { status: 400 }
+      );
+    }
+
+    const admin = createAdminClient();
+
+    const { data: expired, error } = await admin.rpc(
+      'expire_buy_now_checkout',
+      {
+        p_order_id: orderId,
+        p_session_id: session.id,
+      }
+    );
+
+    if (error) {
+      console.error(
+        '[Stripe Webhook] Checkout expiration failed:',
+        error
+      );
+
+      return NextResponse.json(
+        { error: 'Checkout expiration failed.' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[Stripe Webhook] Checkout expiration:', {
+      orderId,
+      expired,
+    });
   }
+
+  return NextResponse.json({ received: true });
+}
+
+if (event.type !== 'checkout.session.completed') {
+  return NextResponse.json({ received: true });
+}
+
 
   const session = event.data.object as Stripe.Checkout.Session;
 
