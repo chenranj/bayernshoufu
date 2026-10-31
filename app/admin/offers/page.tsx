@@ -4,6 +4,7 @@ import {
   acceptOffer,
   counterOffer,
   declineOffer,
+  saveTrackingInfo,
 } from '../_actions';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,10 @@ type OfferRow = {
   payment_expires_at: string | null;
   created_at: string;
   updated_at: string;
+  shipping_carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipped_at: string | null;
 };
 
 type JerseyRow = {
@@ -304,6 +309,97 @@ export default async function OffersAdmin() {
                   </div>
                 )}
 
+                
+{/* SHIPPING TRACKING */}
+{offer.status === 'paid' && (
+  <div className="p-5 border-b border-bayern-border">
+    <div className="mb-4">
+      <p className="text-xs font-semibold uppercase tracking-widest">
+        Shipping Information
+      </p>
+
+      <p className="mt-2 text-xs text-bayern-muted">
+        {offer.shipped_at
+          ? 'SHIPPED — Tracking information saved.'
+          : 'PROCESSING — Awaiting shipment.'}
+      </p>
+    </div>
+
+    <form
+      action={saveTrackingInfo}
+      className="space-y-4 border border-bayern-border bg-black/40 p-4"
+    >
+      <input
+        type="hidden"
+        name="offer_id"
+        value={offer.id}
+      />
+
+      <div>
+        <label className="label">
+          Shipping Carrier
+        </label>
+
+        <input
+          name="shipping_carrier"
+          type="text"
+          required
+          maxLength={100}
+          defaultValue={offer.shipping_carrier ?? ''}
+          placeholder="DHL, FedEx, UPS, Canada Post..."
+          className="input"
+        />
+      </div>
+
+      <div>
+        <label className="label">
+          Tracking Number
+        </label>
+
+        <input
+          name="tracking_number"
+          type="text"
+          required
+          maxLength={200}
+          defaultValue={offer.tracking_number ?? ''}
+          placeholder="Enter tracking number"
+          className="input"
+        />
+      </div>
+
+      <div>
+        <label className="label">
+          Tracking URL (Optional)
+        </label>
+
+        <input
+          name="tracking_url"
+          type="url"
+          maxLength={2000}
+          defaultValue={offer.tracking_url ?? ''}
+          placeholder="https://..."
+          className="input"
+        />
+      </div>
+
+      {offer.shipped_at && (
+        <p className="text-xs text-bayern-muted">
+          First shipped:{' '}
+          {new Date(offer.shipped_at).toLocaleString('en-CA')}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        className="w-full md:w-auto bg-bayern-red hover:opacity-90 text-white px-5 py-3 text-xs font-semibold uppercase tracking-widest transition-opacity"
+      >
+        Save Tracking Information
+      </button>
+    </form>
+  </div>
+)}
+
+                
                 {/* OFFER HISTORY */}
                 <div className="p-5 border-b border-bayern-border">
                   <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-3">
