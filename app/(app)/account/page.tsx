@@ -33,10 +33,10 @@ export default async function AccountPage() {
   // ---------------------------------------------------------------------------
 
   const { data: offers } = await supabase
-    .from('offers')
-    .select(
-  'id, jersey_id, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at, shipping_carrier, tracking_number, tracking_url, shipped_at, shipping_reminder_sent_at'
-)
+  .from('offers')
+  .select(
+    'id, jersey_id, purchase_type, initial_amount, current_amount, status, accepted_amount, payment_expires_at, created_at, updated_at, shipping_carrier, tracking_number, tracking_url, shipped_at, shipping_reminder_sent_at'
+  )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -183,21 +183,21 @@ export default async function AccountPage() {
       <section className="mb-8">
         <div className="flex items-end justify-between gap-4 mb-4">
           <div>
-            <h2 className="font-display text-2xl uppercase tracking-tightest">
-              My Offers
-            </h2>
+        <h2 className="font-display text-2xl uppercase tracking-tightest">
+        My Orders & Offers
+        </h2>
 
-            <p className="mt-1 text-sm text-bayern-muted">
-              View your offers and seller responses.
-            </p>
+        <p className="mt-1 text-sm text-bayern-muted">
+        View your purchases, offers, payments, and shipping updates.
+        </p>
           </div>
 
           <span className="text-xs uppercase tracking-widest text-bayern-muted">
-            {(offers ?? []).length}{' '}
-            {(offers ?? []).length === 1
-              ? 'Offer'
-              : 'Offers'}
-          </span>
+  {(offers ?? []).length}{' '}
+  {(offers ?? []).length === 1
+    ? 'Record'
+    : 'Records'}
+</span>
         </div>
 
         {(offers ?? []).length === 0 ? (
@@ -221,6 +221,19 @@ export default async function AccountPage() {
                 >
                   {/* OFFER HEADER */}
                   <div className="p-5 border-b border-bayern-border">
+                    <div className="mb-4">
+  <span
+    className={`inline-flex border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest ${
+      offer.purchase_type === 'fixed_price'
+        ? 'border-blue-500/50 bg-blue-500/10 text-blue-300'
+        : 'border-bayern-red/50 bg-bayern-red/10 text-white'
+    }`}
+  >
+    {offer.purchase_type === 'fixed_price'
+      ? 'BUY NOW'
+      : 'OFFER'}
+  </span>
+</div>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div>
                         <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-2">
@@ -246,7 +259,9 @@ export default async function AccountPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 border-b border-bayern-border">
                     <div className="p-4 border-r border-bayern-border">
                       <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
-                        Your Original Offer
+                        {offer.purchase_type === 'fixed_price'
+  ? 'Purchase Price'
+  : 'Your Original Offer'}
                       </p>
 
                       <p className="mt-2 text-xl font-semibold">
@@ -258,7 +273,9 @@ export default async function AccountPage() {
 
                     <div className="p-4 md:border-r border-bayern-border">
                       <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
-                        Current Offer
+                        {offer.purchase_type === 'fixed_price'
+? 'Order Amount'
+  : 'Current Offer'}
                       </p>
 
                       <p className="mt-2 text-xl font-semibold">
@@ -405,6 +422,7 @@ export default async function AccountPage() {
 )}
 
                   {/* OFFER HISTORY */}
+                  {offer.purchase_type === 'offer' && (
                   <div className="p-5">
                     <p className="text-[10px] uppercase tracking-widest text-bayern-muted mb-4">
                       Offer History
@@ -472,6 +490,7 @@ export default async function AccountPage() {
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* SELLER COUNTER OFFER */}
                   {offer.status === 'countered' && (
