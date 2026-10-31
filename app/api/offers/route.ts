@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     // 4. 确认球衣存在，而且确实是 By Offer Only
     const { data: jersey, error: jerseyError } = await supabase
       .from('jerseys')
-      .select('id, name, sale_type')
+      .select('id, name, sale_type, is_sold')
       .eq('id', jerseyId)
       .single();
 
@@ -81,6 +81,13 @@ export async function POST(request: Request) {
       );
     }
 
+        // 已售出的球衣不能再提交 Offer
+    if (jersey.is_sold) {
+      return NextResponse.json(
+        { error: 'This jersey has already been sold.' },
+        { status: 409 }
+      );
+    }
     if (jersey.sale_type !== 'offer_only') {
       return NextResponse.json(
         { error: 'This jersey is not available for offers.' },
