@@ -9,9 +9,12 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecrets = [
+  process.env.STRIPE_WEBHOOK_SECRET,
+  process.env.STRIPE_LIVE_WEBHOOK_SECRET,
+].filter((secret): secret is string => Boolean(secret));
 
-  if (!signature || !webhookSecret) {
+  if (!signature || webhookSecrets.length === 0) {
     return NextResponse.json(
       { error: 'Webhook configuration missing.' },
       { status: 400 }
@@ -24,11 +27,26 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
 
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret
-    );
+        let verifiedEvent: Stripe.Event | null = null;
+
+    for (const secret of webhookSecrets) {
+      try {
+        verifiedEvent = stripe.webhooks.constructEvent(
+          body,
+          signature,
+          secret
+        );
+        break;
+      } catch {
+        // Try the next configured signing secret.
+      }
+    }
+
+    if (!verifiedEvent) {
+      throw new Error('No matching webhook signing secret.');
+    }
+
+    event = verifiedEvent;
   } catch (error) {
     console.error('[Stripe Webhook] Signature error:', error);
 
