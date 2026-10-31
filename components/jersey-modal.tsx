@@ -53,6 +53,44 @@ export function JerseyModal({
 }) {
   const [idx, setIdx] = useState(0);
 
+  const [buyLoading, setBuyLoading] = useState(false);
+const [buyError, setBuyError] = useState('');
+
+async function handleBuyNow() {
+  setBuyLoading(true);
+  setBuyError('');
+
+  try {
+    const response = await fetch('/api/jerseys/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jerseyId: jersey.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (!response.ok || !data.url) {
+      setBuyError(data.error || 'Unable to start checkout.');
+      return;
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.error('Buy Now error:', error);
+    setBuyError('Something went wrong. Please try again.');
+  } finally {
+    setBuyLoading(false);
+  }
+}
   // Offer modal
   const [offerOpen, setOfferOpen] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
@@ -397,6 +435,24 @@ export function JerseyModal({
                       {jersey.buyer_premium ?? 10}%
                     </p>
                   </div>
+                  {userRole !== 'admin' && jersey.price != null && (
+  <>
+    <button
+      type="button"
+      onClick={handleBuyNow}
+      disabled={buyLoading}
+      className="mt-5 w-full bg-bayern-red hover:bg-red-700 text-white px-4 py-3 text-xs font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+    >
+      {buyLoading ? 'Redirecting...' : 'BUY NOW'}
+    </button>
+
+    {buyError && (
+      <p className="mt-2 text-xs text-red-400">
+        {buyError}
+      </p>
+    )}
+  </>
+)}
                 </>
               )}
             </div>
