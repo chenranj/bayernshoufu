@@ -120,28 +120,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mark the purchased jersey as SOLD.
-    // This runs before the email notification logic,
-    // including when Stripe retries the webhook.
-    const { error: soldError } = await admin
-      .from('jerseys')
-      .update({
-        is_sold: true,
-        sold_at: new Date().toISOString(),
-      })
-      .eq('id', offer.jersey_id)
-      .eq('is_sold', false);
+      // Only LIVE payments mark a jersey as SOLD.
+    // Sandbox payments keep the jersey available for sale.
+    if (event.livemode) {
+      const { error: soldError } = await admin
+        .from('jerseys')
+        .update({
+          is_sold: true,
+          sold_at: new Date().toISOString(),
+        })
+        .eq('id', offer.jersey_id)
+        .eq('is_sold', false);
 
-    if (soldError) {
-      console.error(
-        '[Stripe Webhook] Failed to mark jersey as SOLD:',
-        soldError
-      );
+      if (soldError) {
+        console.error(
+          '[Stripe Webhook] Failed to mark jersey as SOLD:',
+          soldError
+        );
 
-      return NextResponse.json(
-        { error: 'Failed to mark jersey as SOLD.' },
-        { status: 500 }
-      );
+        return NextResponse.json(
+          { error: 'Failed to mark jersey as SOLD.' },
+          { status: 500 }
+        );
+      }
     }
     
     // 3. Claim notification atomically.
