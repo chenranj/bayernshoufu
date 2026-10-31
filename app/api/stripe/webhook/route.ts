@@ -109,12 +109,24 @@ if (event.type !== 'checkout.session.completed') {
   return NextResponse.json({ received: true });
 }
 
+const session = event.data.object as Stripe.Checkout.Session;
 
-  const session = event.data.object as Stripe.Checkout.Session;
+if (event.livemode !== session.livemode) {
+  console.error(
+    '[Stripe Webhook] Live/Test mode mismatch:',
+    session.id
+  );
 
-  if (session.payment_status !== 'paid') {
-    return NextResponse.json({ received: true });
-  }
+  return NextResponse.json(
+    { error: 'Payment mode mismatch.' },
+    { status: 409 }
+  );
+}
+
+if (session.payment_status !== 'paid') {
+  return NextResponse.json({ received: true });
+}
+
 
   const orderId = session.metadata?.offer_id;
 
