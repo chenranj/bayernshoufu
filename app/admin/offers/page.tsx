@@ -310,94 +310,200 @@ export default async function OffersAdmin() {
                 )}
 
                 
+
 {/* SHIPPING TRACKING */}
 {offer.status === 'paid' && (
   <div className="p-5 border-b border-bayern-border">
-    <div className="mb-4">
-      <p className="text-xs font-semibold uppercase tracking-widest">
-        Shipping Information
-      </p>
+    <p className="text-xs font-semibold uppercase tracking-widest mb-4">
+      Shipping Information
+    </p>
 
-      <p className="mt-2 text-xs text-bayern-muted">
-        {offer.shipped_at
-          ? 'SHIPPED — Tracking information saved.'
-          : 'PROCESSING — Awaiting shipment.'}
-      </p>
-    </div>
-
-    <form
-      action={saveTrackingInfo}
-      className="space-y-4 border border-bayern-border bg-black/40 p-4"
-    >
-      <input
-        type="hidden"
-        name="offer_id"
-        value={offer.id}
-      />
-
-      <div>
-        <label className="label">
-          Shipping Carrier
-        </label>
-
-        <input
-          name="shipping_carrier"
-          type="text"
-          required
-          maxLength={100}
-          defaultValue={offer.shipping_carrier ?? ''}
-          placeholder="DHL, FedEx, UPS, Canada Post..."
-          className="input"
-        />
-      </div>
-
-      <div>
-        <label className="label">
-          Tracking Number
-        </label>
-
-        <input
-          name="tracking_number"
-          type="text"
-          required
-          maxLength={200}
-          defaultValue={offer.tracking_number ?? ''}
-          placeholder="Enter tracking number"
-          className="input"
-        />
-      </div>
-
-      <div>
-        <label className="label">
-          Tracking URL (Optional)
-        </label>
-
-        <input
-          name="tracking_url"
-          type="url"
-          maxLength={2000}
-          defaultValue={offer.tracking_url ?? ''}
-          placeholder="https://..."
-          className="input"
-        />
-      </div>
-
-      {offer.shipped_at && (
-        <p className="text-xs text-bayern-muted">
-          First shipped:{' '}
-          {new Date(offer.shipped_at).toLocaleString('en-CA')}
+    {offer.shipped_at ? (
+      <div className="border border-green-500/30 bg-green-500/5 p-5">
+        <p className="text-sm font-semibold uppercase tracking-widest text-green-400">
+          SHIPPED
         </p>
-      )}
 
-      <button
-        type="submit"
-        className="w-full md:w-auto bg-bayern-red hover:opacity-90 text-white px-5 py-3 text-xs font-semibold uppercase tracking-widest transition-opacity"
-      >
-        Save Tracking Information
-      </button>
-    </form>
+        <p className="mt-2 text-xs text-bayern-muted">
+          Your jersey has been shipped.
+        </p>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+              Shipping Carrier
+            </p>
+            <p className="mt-1 text-sm font-semibold">
+              {offer.shipping_carrier || '—'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-bayern-muted">
+              Tracking Number
+            </p>
+            <p className="mt-1 text-sm font-mono break-all">
+              {offer.tracking_number || '—'}
+            </p>
+          </div>
+
+          {offer.tracking_url && (
+            <a
+              href={offer.tracking_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block border border-green-500/50 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-green-400 hover:bg-green-500/10"
+            >
+              TRACK PACKAGE ↗
+            </a>
+          )}
+
+          <p className="text-xs text-bayern-muted">
+            First shipped:{' '}
+            {new Date(offer.shipped_at).toLocaleString('en-CA')}
+          </p>
+        </div>
+
+        <details className="mt-5 border-t border-green-500/20 pt-4">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-widest text-green-400 hover:opacity-80">
+            EDIT TRACKING
+          </summary>
+
+          <form
+            action={saveTrackingInfo}
+            className="mt-4 space-y-4 border border-bayern-border bg-black/40 p-4"
+          >
+            <input
+              type="hidden"
+              name="offer_id"
+              value={offer.id}
+            />
+
+            <div>
+              <label className="label">
+                Shipping Carrier
+              </label>
+              <input
+                name="shipping_carrier"
+                type="text"
+                required
+                maxLength={100}
+                defaultValue={offer.shipping_carrier ?? ''}
+                className="input"
+              />
+            </div>
+
+            <div>
+              <label className="label">
+                Tracking Number
+              </label>
+              <input
+                name="tracking_number"
+                type="text"
+                required
+                maxLength={200}
+                defaultValue={offer.tracking_number ?? ''}
+                className="input"
+              />
+            </div>
+
+            <div>
+              <label className="label">
+                Tracking URL (Optional)
+              </label>
+              <input
+                name="tracking_url"
+                type="url"
+                maxLength={2000}
+                defaultValue={offer.tracking_url ?? ''}
+                placeholder="https://..."
+                className="input"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full md:w-auto bg-bayern-red hover:opacity-90 text-white px-5 py-3 text-xs font-semibold uppercase tracking-widest transition-opacity"
+            >
+              SAVE TRACKING INFORMATION
+            </button>
+          </form>
+        </details>
+      </div>
+    ) : (
+      <div>
+        <div className="border border-yellow-500/30 bg-yellow-500/5 p-4 mb-4">
+          <p className="text-sm font-semibold uppercase tracking-widest text-yellow-400">
+            PROCESSING
+          </p>
+          <p className="mt-2 text-xs text-bayern-muted">
+            Payment received. Awaiting shipment and tracking information.
+          </p>
+        </div>
+
+        <form
+          action={saveTrackingInfo}
+          className="space-y-4 border border-bayern-border bg-black/40 p-4"
+        >
+          <input
+            type="hidden"
+            name="offer_id"
+            value={offer.id}
+          />
+
+          <div>
+            <label className="label">
+              Shipping Carrier
+            </label>
+            <input
+              name="shipping_carrier"
+              type="text"
+              required
+              maxLength={100}
+              placeholder="DHL, FedEx, UPS, Canada Post..."
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label className="label">
+              Tracking Number
+            </label>
+            <input
+              name="tracking_number"
+              type="text"
+              required
+              maxLength={200}
+              placeholder="Enter tracking number"
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label className="label">
+              Tracking URL (Optional)
+            </label>
+            <input
+              name="tracking_url"
+              type="url"
+              maxLength={2000}
+              placeholder="https://..."
+              className="input"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full md:w-auto bg-bayern-red hover:opacity-90 text-white px-5 py-3 text-xs font-semibold uppercase tracking-widest transition-opacity"
+          >
+            SAVE TRACKING INFORMATION
+          </button>
+        </form>
+      </div>
+    )}
   </div>
 )}
+
 
                 
                 {/* OFFER HISTORY */}
