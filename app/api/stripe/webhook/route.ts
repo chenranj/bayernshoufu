@@ -9,10 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
+
   const webhookSecrets = [
-  process.env.STRIPE_WEBHOOK_SECRET,
-  process.env.STRIPE_LIVE_WEBHOOK_SECRET,
-].filter((secret): secret is string => Boolean(secret));
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_LIVE_WEBHOOK_SECRET,
+  ].filter((secret): secret is string => Boolean(secret));
 
   if (!signature || webhookSecrets.length === 0) {
     return NextResponse.json(
@@ -21,17 +22,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const stripe = getStripe();
   let event: Stripe.Event;
 
   try {
     const body = await request.text();
-
-        let verifiedEvent: Stripe.Event | null = null;
+    let verifiedEvent: Stripe.Event | null = null;
 
     for (const secret of webhookSecrets) {
       try {
-        verifiedEvent = stripe.webhooks.constructEvent(
+        verifiedEvent = getStripe().webhooks.constructEvent(
           body,
           signature,
           secret
@@ -56,199 +55,235 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
+  if (event.type !== 'checkout.session.completed') {
+    return NextResponse.json({ received: true });
+  }
 
-    if (session.payment_status !== 'paid') {
-      return NextResponse.json({ received: true });
-    }
+  const session = event.data.object as Stripe.Checkout.Session;
 
-    const offerId = session.metadata?.offer_id;
+  if (session.payment_status !== 'paid') {
+    return NextResponse.json({ received: true });
+  }
 
-    if (!offerId) {
-      return NextResponse.json(
-        { error: 'Missing offer ID.' },
-        { status: 400 }
-      );
-    }
+  const orderId = session.metadata?.offer_id;
 
-    const admin = createAdminClient();
+  if (!orderId) {
+    console.error('[Stripe Webhook] Missing order ID:', session.id);
 
-    // 1. Update payment status.
-    // Only accepted offers can transition to paid.
-    const { error: paymentError } = await admin
-      .from('offers')
-      .update({
-        status: 'paid',
-        paid_at: new Date().toISOString(),
-        stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id:
-          typeof session.payment_intent === 'string'
-            ? session.payment_intent
-            : session.payment_intent?.id ?? null,
-      })
-      .eq('id', offerId)
-      .eq('status', 'accepted');
+    return NextResponse.json(
+      { error: 'Missing order ID.' },
+      { status: 400 }
+    );
+  }
 
-    if (paymentError) {
-      console.error(
-        '[Stripe Webhook] Database error:',
-        paymentError
-      );
+  const admin = createAdminClient();
 
-      return NextResponse.json(
-        { error: 'Database update failed.' },
-        { status: 500 }
-      );
-    }
+  // 1. Load the order before confirming payment.
+  const { data: order, error: orderError } = await admin
+    .from('offers')
+    .select(
+      'id, jersey_id, user_id, purchase_type, status, accepted_amount, stripe_checkout_session_id'
+    )
+    .eq('id', orderId)
+    .maybeSingle();
 
-    // 2. Verify that this payment belongs to the offer.
-    const { data: offer, error: offerError } = await admin
-      .from('offers')
-      .select(
-        'id, jersey_id, accepted_amount, status, stripe_checkout_session_id'
-      )
-      .eq('id', offerId)
-      .single();
+  if (orderError || !order) {
+    console.error('[Stripe Webhook] Order lookup failed:', orderError);
 
-    if (offerError || !offer) {
-      console.error(
-        '[Stripe Webhook] Offer lookup failed:',
-        offerError
-      );
+    return NextResponse.json(
+      { error: 'Order lookup failed.' },
+      { status: 500 }
+    );
+  }
 
-      return NextResponse.json(
-        { error: 'Offer lookup failed.' },
-        { status: 500 }
-      );
-    }
+  // 2. Verify the Stripe Session belongs to this order.
+  const metadata = session.metadata;
 
-    if (
-      offer.status !== 'paid' ||
-      offer.stripe_checkout_session_id !== session.id
-    ) {
-      console.error(
-        '[Stripe Webhook] Payment session mismatch:',
-        offerId
-      );
+  if (
+    session.mode !== 'payment' ||
+    session.currency?.toLowerCase() !== 'usd' ||
+    session.client_reference_id !== order.id ||
+    metadata?.jersey_id !== order.jersey_id ||
+    metadata?.user_id !== order.user_id ||
+    (
+      metadata?.purchase_type != null &&
+      metadata.purchase_type !== order.purchase_type
+    )
+  ) {
+    console.error('[Stripe Webhook] Session ownership mismatch:', session.id);
 
-      return NextResponse.json(
-        { error: 'Payment session mismatch.' },
-        { status: 409 }
-      );
-    }
+    return NextResponse.json(
+      { error: 'Payment ownership mismatch.' },
+      { status: 409 }
+    );
+  }
 
-      // Only LIVE payments mark a jersey as SOLD.
-    // Sandbox payments keep the jersey available for sale.
-    if (event.livemode) {
-      const { error: soldError } = await admin
-        .from('jerseys')
-        .update({
-          is_sold: true,
-          sold_at: new Date().toISOString(),
-        })
-        .eq('id', offer.jersey_id)
-        .eq('is_sold', false);
+  if (
+    order.stripe_checkout_session_id &&
+    order.stripe_checkout_session_id !== session.id
+  ) {
+    console.error('[Stripe Webhook] Session ID mismatch:', session.id);
 
-      if (soldError) {
-        console.error(
-          '[Stripe Webhook] Failed to mark jersey as SOLD:',
-          soldError
-        );
+    return NextResponse.json(
+      { error: 'Payment session mismatch.' },
+      { status: 409 }
+    );
+  }
 
-        return NextResponse.json(
-          { error: 'Failed to mark jersey as SOLD.' },
-          { status: 500 }
-        );
-      }
-    }
-    
-    // 3. Claim notification atomically.
-    const { data: claimed, error: claimError } =
-      await admin.rpc('claim_payment_notification', {
-        p_offer_id: offerId,
-      });
+  // 3. Load jersey premium to verify the paid total.
+  const { data: jersey, error: jerseyError } = await admin
+    .from('jerseys')
+    .select('name, buyer_premium')
+    .eq('id', order.jersey_id)
+    .maybeSingle();
 
-    if (claimError) {
-      console.error(
-        '[Stripe Webhook] Notification claim error:',
-        claimError
-      );
+  if (jerseyError || !jersey) {
+    console.error('[Stripe Webhook] Jersey lookup failed:', jerseyError);
 
-      // Payment is already recorded. Allow Stripe to retry.
-      return NextResponse.json(
-        { error: 'Notification claim failed.' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json(
+      { error: 'Jersey lookup failed.' },
+      { status: 500 }
+    );
+  }
 
-    if (!claimed) {
-      // Already sent, or another request is sending it.
-      return NextResponse.json({ received: true });
-    }
+  const acceptedAmount = Number(order.accepted_amount);
+  const premiumPercent = Number(jersey.buyer_premium ?? 10);
 
-    // 4. Get jersey name for the email.
-    const { data: jersey, error: jerseyError } = await admin
-      .from('jerseys')
-      .select('name')
-      .eq('id', offer.jersey_id)
-      .single();
+  if (
+    !Number.isFinite(acceptedAmount) ||
+    acceptedAmount <= 0 ||
+    !Number.isFinite(premiumPercent) ||
+    premiumPercent < 0
+  ) {
+    return NextResponse.json(
+      { error: 'Invalid order amount.' },
+      { status: 409 }
+    );
+  }
 
-    if (jerseyError) {
-      console.error(
-        '[Stripe Webhook] Jersey lookup error:',
-        jerseyError
-      );
-    }
+  const amountCents = Math.round(acceptedAmount * 100);
+  const premiumCents = Math.round(
+    (amountCents * premiumPercent) / 100
+  );
+  const expectedTotalCents = amountCents + premiumCents;
 
-    // 5. Send administrator email.
-    const emailSent = await sendPaymentReceivedAdminEmail({
-      jerseyName: jersey?.name ?? 'Jersey',
-      amount: Number(offer.accepted_amount ?? 0),
-      buyerEmail: session.customer_details?.email ??
-        session.customer_email ??
-        null,
+  if (
+    session.amount_total !== expectedTotalCents ||
+    session.amount_subtotal !== expectedTotalCents
+  ) {
+    console.error('[Stripe Webhook] Payment amount mismatch:', {
+      orderId,
+      expectedTotalCents,
+      receivedTotalCents: session.amount_total,
     });
 
-    if (emailSent) {
-      const { error: sentError } = await admin
-        .from('offers')
-        .update({
-          payment_notification_status: 'sent',
-          payment_notification_sent_at: new Date().toISOString(),
-        })
-        .eq('id', offerId)
-        .eq('payment_notification_status', 'sending');
+    return NextResponse.json(
+      { error: 'Payment amount mismatch.' },
+      { status: 409 }
+    );
+  }
 
-      if (sentError) {
-        console.error(
-          '[Stripe Webhook] Notification status error:',
-          sentError
-        );
-      }
-    } else {
-      const { error: resetError } = await admin
-        .from('offers')
-        .update({
-          payment_notification_status: 'pending',
-          payment_notification_claimed_at: null,
-        })
-        .eq('id', offerId)
-        .eq('payment_notification_status', 'sending');
+  // 4. Atomically confirm payment and LIVE SOLD status.
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
 
-      if (resetError) {
-        console.error(
-          '[Stripe Webhook] Notification reset error:',
-          resetError
-        );
-      }
+  const { data: confirmed, error: confirmationError } =
+    await admin.rpc('confirm_checkout_payment', {
+      p_order_id: order.id,
+      p_session_id: session.id,
+      p_payment_intent_id: paymentIntentId,
+      p_is_live: event.livemode,
+    });
 
-      // Request a Stripe retry without changing PAID status.
+  if (confirmationError || confirmed !== true) {
+    console.error('[Stripe Webhook] Payment confirmation failed:', {
+      orderId,
+      confirmationError,
+      confirmed,
+    });
+
+    return NextResponse.json(
+      { error: 'Payment confirmation failed.' },
+      { status: 500 }
+    );
+  }
+
+  // 5. Claim seller notification once.
+  const { data: claimed, error: claimError } =
+    await admin.rpc('claim_payment_notification', {
+      p_offer_id: order.id,
+    });
+
+  if (claimError) {
+    console.error(
+      '[Stripe Webhook] Notification claim error:',
+      claimError
+    );
+
+    return NextResponse.json(
+      { error: 'Notification claim failed.' },
+      { status: 500 }
+    );
+  }
+
+  if (!claimed) {
+    return NextResponse.json({ received: true });
+  }
+
+  // 6. Send PAYMENT RECEIVED email.
+  const emailSent = await sendPaymentReceivedAdminEmail({
+    jerseyName: jersey.name ?? 'Jersey',
+    amount: acceptedAmount,
+    buyerEmail:
+      session.customer_details?.email ??
+      session.customer_email ??
+      null,
+  });
+
+  if (emailSent) {
+    const { error: sentError } = await admin
+      .from('offers')
+      .update({
+        payment_notification_status: 'sent',
+        payment_notification_sent_at: new Date().toISOString(),
+      })
+      .eq('id', order.id)
+      .eq('payment_notification_status', 'sending');
+
+    if (sentError) {
+      console.error(
+        '[Stripe Webhook] Notification status error:',
+        sentError
+      );
+
       return NextResponse.json(
-        { error: 'Payment recorded; notification failed.' },
+        { error: 'Notification status update failed.' },
         { status: 500 }
       );
     }
+  } else {
+    const { error: resetError } = await admin
+      .from('offers')
+      .update({
+        payment_notification_status: 'pending',
+        payment_notification_claimed_at: null,
+      })
+      .eq('id', order.id)
+      .eq('payment_notification_status', 'sending');
+
+    if (resetError) {
+      console.error(
+        '[Stripe Webhook] Notification reset error:',
+        resetError
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Payment recorded; notification failed.' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true });
